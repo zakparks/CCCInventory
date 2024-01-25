@@ -72,10 +72,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "browserTarget": "CCCInventory:build:production"
+              "buildTarget": "CCCInventory:build:production"
             },
             "development": {
-              "browserTarget": "CCCInventory:build:development",
+              "buildTarget": "CCCInventory:build:development",
               "proxyConfig": "proxy.conf.js"
             }
           },
@@ -84,7 +84,7 @@
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "browserTarget": "CCCInventory:build"
+            "buildTarget": "CCCInventory:build"
           }
         },
         "test": {
@@ -132,7 +132,6 @@
       }
     }
   },
-  "defaultProject": "CCCInventory",
   "cli": {
     "analytics": "f9898271-b6a0-45b9-8a76-afd5559de597"
   }
