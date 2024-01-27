@@ -38,6 +38,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <TypeScriptCompile Remove="node_modules\**" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<None Remove="ClientApp\src\app\models\cake.ts" />
 		<None Remove="ClientApp\src\app\models\cookie.ts" />
 		<None Remove="ClientApp\src\app\models\cupcake.ts" />
@@ -51,10 +55,6 @@
 		<TypeScriptCompile Include="ClientApp\src\app\models\cupcake.ts" />
 		<TypeScriptCompile Include="ClientApp\src\app\models\order.ts" />
 		<TypeScriptCompile Include="ClientApp\src\app\models\pupcake.ts" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <Folder Include="node_modules\" />
 	</ItemGroup>
 
 		<Target Name="DebugEnsureNodeEnv" BeforeTargets="Build" Condition=" '$(Configuration)' == 'Debug' And !Exists('$(SpaRoot)node_modules') ">
