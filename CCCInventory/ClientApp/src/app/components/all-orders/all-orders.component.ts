@@ -15,8 +15,9 @@ export class AllOrdersComponent {
   constructor(private orderService: OrderService) { }
 
   ngOnInit(): void {
-    this.orders = this.orderService.GetOrders();
-    console.log(this.orders);
+    this.orderService
+      .GetOrders()
+      .subscribe((result: Order[]) => (this.orders = result));
   }
 }
 

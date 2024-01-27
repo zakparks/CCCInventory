@@ -1,20 +1,18 @@
 import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs/internal/Observable';
 import { Order } from '../models/order';
+import { environment } from 'src/environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class OrderService {
+  private url = "Order"
 
-  constructor() { }
+  constructor(private http: HttpClient) { }
 
-  public GetOrders(): Order[] {
-    let order = new Order();
-    order.OrderNumber = 1;
-    order.Details = "cake test";
-    order.CustName = "Zak";
-    order.CustEmail = "zakparks@gmail.com";
-
-    return [order];
+  public GetOrders(): Observable<Order[]> {
+    return this.http.get<Order[]>(`${environment.apiUrl}/${this.url}`);
   }
 }

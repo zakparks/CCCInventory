@@ -3,6 +3,11 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 builder.Services.AddControllersWithViews();
+builder.Services.AddCors(options => options.AddPolicy(name: "OrderOrigins",
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:7005", "https://localhost:7005", "http://localhost:44401", "https://localhost:44401").AllowAnyMethod().AllowAnyHeader();
+        }));
 
 var app = builder.Build();
 
@@ -13,10 +18,10 @@ if (!app.Environment.IsDevelopment())
     //app.UseHsts();
 }
 
+app.UseCors("OrderOrigins");
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
-
 
 app.MapControllerRoute(
     name: "default",
