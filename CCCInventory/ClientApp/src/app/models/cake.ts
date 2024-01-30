@@ -1,9 +1,9 @@
 export class Cake {
-  TierSize: string | undefined;
-  NumTierLayers: number | undefined;
-  CakeShape: string | undefined;
-  CakeFlavor: string | undefined;
-  FillingFlavor: string | undefined;
-  IcingFlavor: string | undefined;
-  SplitTier: boolean | undefined;
+  tierSize: string | undefined;
+  numTierLayers: number | undefined;
+  cakeShape: string | undefined;
+  cakeFlavor: string | undefined;
+  fillingFlavor: string | undefined;
+  icingFlavor: string | undefined;
+  splitTier: boolean | undefined;
 }

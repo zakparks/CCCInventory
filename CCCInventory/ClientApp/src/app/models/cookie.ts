@@ -1,4 +1,4 @@
 export class Cookie {
-  CookieType: string | undefined;
-  CookieQuantity: number | undefined;
+  cookieType: string | undefined;
+  cookieQuantity: number | undefined;
 }

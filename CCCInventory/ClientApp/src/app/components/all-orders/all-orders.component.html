@@ -1,22 +1,24 @@
 <h1 id="tableLabel">All Orders</h1>
-<!--
-<p *ngIf="!forecasts"><em>Loading...</em></p>
-*ngIf="forecasts"-->
-<table class='table table-striped' aria-labelledby="tableLabel">
-  <thead>
-    <tr>
-      <th>OrderNumber</th>
-      <th>Details</th>
-      <th>CustName</th>
-      <th>CustEmail</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr *ngFor="let order of orders">
-      <td>{{ order.OrderNumber }}</td>
-      <td>{{ order.Details }}</td>
-      <td>{{ order.CustName }}</td>
-      <td>{{ order.CustEmail }}</td>
-    </tr>
-  </tbody>
-</table>
+
+<p *ngIf="!orders"><em>Loading...</em></p>
+
+<div *ngIf="orders">
+  <table class='table table-striped' aria-labelledby="tableLabel">
+    <thead>
+      <tr>
+        <th>Order Number</th>
+        <th>Details</th>
+        <th>Name</th>
+        <th>Email</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let order of orders">
+        <td>{{ order.orderNumber }}</td>
+        <td>{{ order.details }}</td>
+        <td>{{ order.custName }}</td>
+        <td>{{ order.custEmail }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>

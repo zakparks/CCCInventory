@@ -1,7 +1,7 @@
 export class Cupcake {
-  CupcakeSize: string | undefined;
-  CupcakeQuantity: number | undefined;
-  CupcakeFlavor: string | undefined;
-  FillingFlavor: string | undefined;
-  IcingFlavor: string | undefined;
+  cupcakeSize: string | undefined;
+  cupcakeQuantity: number | undefined;
+  cupcakeFlavor: string | undefined;
+  fillingFlavor: string | undefined;
+  icingFlavor: string | undefined;
 }

@@ -9,21 +9,16 @@ import { Order } from '../../models/order';
 })
 
 export class AllOrdersComponent {
-  public forecasts: WeatherForecast[] = [];
-  orders: Order[] = [];
+  public orders!: Order[];
 
   constructor(private orderService: OrderService) { }
 
   ngOnInit(): void {
     this.orderService
       .GetOrders()
-      .subscribe((result: Order[]) => (this.orders = result));
+      .subscribe(result => {
+        this.orders = result;
+        console.log("this.orders: ", this.orders);
+      });
   }
-}
-
-interface WeatherForecast {
-  date: string;
-  temperatureC: number;
-  temperatureF: number;
-  summary: string;
 }

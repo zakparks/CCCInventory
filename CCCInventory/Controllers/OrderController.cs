@@ -13,10 +13,17 @@ namespace CCCInventory.Controllers
             { 
                 new Order
                 {
-                    OrderNumber = 2,
+                    OrderNumber = 1,
                     Details = "cake test",
-                    CustName = "Zak",
-                    CustEmail = "zakparks@gmail.com"
+                    CustName = "Jasper",
+                    CustEmail = "asdf@gmail.com"
+                },
+                new Order
+                {
+                    OrderNumber = 2,
+                    Details = "another cake test",
+                    CustName = "Katniss",
+                    CustEmail = "hjkl@gmail.com"
                 }
             };
         }
