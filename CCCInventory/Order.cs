@@ -1,11 +1,14 @@
-﻿namespace CCCInventory
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace CCCInventory
 {
     public class Order
     {
+        [Key]
         public int OrderNumber { get; set; }
         public DateTime? OrderDate { get; set; }
         public DateTime? PickupTime { get; set; }
-        public string DeliveryLocation { get; set; }
+        public string? DeliveryLocation { get; set; }
         public string? CustName { get; set; }
         public string? CustEmail { get; set; }
         public string? CustPhone { get; set; }

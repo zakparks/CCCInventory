@@ -1,9 +1,12 @@
 ﻿using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace CCCInventory
 {
     public class Cake
     {
+        [Key]
+        public int Id { get; set; }
         public string TierSize { get; set; }
         public int NumTierLayers { get; set; }
         public string CakeShape { get; set; }
