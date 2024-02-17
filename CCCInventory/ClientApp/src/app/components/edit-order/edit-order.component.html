@@ -1,0 +1,365 @@
+<h1>Order Form</h1>
+
+<form class="row g-3" [formGroup]="editOrderFormGroup" (ngSubmit)="onSubmit()" autocomplete="off">
+  <hr />
+  <h5>Add to order:</h5>
+  <div class="row">
+    <div class="col-md-1">
+      <button type="button" class="btn btn-outline-primary" style="width: 100px" (click)="addRow('cakeTierInfo', getBlankCakeFormControls())">Cake</button>
+    </div>
+    <div class="col-md-1">
+      <button type="button" class="btn btn-outline-primary" style="width: 100px" (click)="addRow('cupcakeInfo', getBlankCupcakeFormControls())">Cupcakes</button>
+    </div>
+    <div class="col-md-1">
+      <button type="button" class="btn btn-outline-primary" style="width: 100px" (click)="addRow('pupcakeInfo', getBlankPupcakeFormControls())">Pupcakes</button>
+    </div>
+    <div class="col-md-1">
+      <button type="button" class="btn btn-outline-primary" style="width: 100px" (click)="addRow('cookieInfo', getBlankCookieFormControls())">Cookies </button>
+    </div>
+  </div>
+
+  <!-- standard fields -->
+  <hr />
+  <h5>Order Information</h5>
+  <div class="row">
+
+    <!-- order information -->
+    <div class="col-md-3">
+      <div class="mb-3 form-floating">
+        <input formControlName="orderNumber" type="text" id="orderNumber" size="25" class="form-control" autocomplete="disabled" required />
+        <label for="orderNumber">Order Number</label>
+      </div>
+      <div class="mb-3 form-floating">
+        <input formControlName="orderDate" type="date" id="orderDate" data-provide="datepicker" class="form-control" autocomplete="disabled" required />
+        <label for="orderDate">Order Delivery/Pickup Date</label>
+      </div>
+      <div class="mb-3 form-floating">
+        <input formControlName="pickupTime" type="text" id="pickupTime" class="form-control" autocomplete="disabled" required />
+        <label for="pickupTime">Pickup Time</label>
+      </div>
+      <div class="mb-3 form-floating">
+        <input formControlName="deliveryLocation" type="text" id="deliveryLocation" class="form-control" autocomplete="disabled" />
+        <label for="deliveryLocation">Delivery/Pickup Location</label>
+        <!-- TODO : add google maps location autocomplete
+           https://developers.google.com/maps/documentation/javascript/place-autocomplete
+        -->
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="mb-3 form-floating">
+        <input formControlName="custName" type="text" id="custName" class="form-control" autocomplete="disabled" required />
+        <label for="custName">Customer Name</label>
+      </div>
+      <div class="mb-3 form-floating">
+        <input formControlName="custEmail" type="email" id="custEmail" class="form-control" autocomplete="disabled" />
+        <label for="custEmail">Customer Email</label>
+      </div>
+      <div class="mb-3 form-floating">
+        <input formControlName="custPhone" type="text" id="custPhone" class="form-control" autocomplete="disabled" required />
+        <label for="custPhone">Customer Phone Number</label>
+      </div>
+      <div class="mb-3 ">
+        <label for="formFiles" class="form-label">File/image attachments:</label>
+        <input formControlName="formFiles" type="file" id="formFiles" multiple class="form-control" autocomplete="disabled">
+      </div>
+    </div>
+
+    <!-- TODO: Add TinyMCE editor https://github.com/tinymce/tinymce-angular -->
+    <div class="col-md-6 d-flex flex-column h-100">
+      <div class="mb-3 form-floating flex-grow-1">
+        <textarea formControlName="details" type="text" id="details" rows="1" class="form-control h-100" autocomplete="disabled"></textarea>
+        <label for="details">Details</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-1">
+      <div class="form-check">
+        <!--TODO: Angular for checkboxes-->
+        <input class="form-check-input" type="radio" name="flexRadioDefault" id="flexRadioDefault1" autocomplete="disabled" />
+        <label class="form-check-label" for="flexRadioDefault1">Pickup</label>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="form-check ">
+        <input class="form-check-input" type="radio" name="flexRadioDefault" id="flexRadioDefault2" autocomplete="disabled" />
+        <label class="form-check-label" for="flexRadioDefault2">Delivery</label>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="mb-3 form-floating">
+        <input type="text" formControlName="secondaryName" id="secondaryName" class="form-control" autocomplete="disabled" />
+        <label for="secondaryName">Day-of/Secondary Contact Name</label>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="mb-3 form-floating">
+        <input type="text" formControlName="secondaryPhone" id="secondaryPhone" class="form-control" autocomplete="disabled" />
+        <label for="secondaryPhone">Day-of/Secondary Contact Phone</label>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="mb-3 form-floating">
+        <input type="text" formControlName="initialContact" id="initialContact" class="form-control" autocomplete="disabled" />
+        <label for="initialContact">Initial Contact Method</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-2">
+      <div class="form-check form-switch">
+        <input formControlName="contractSent" class="form-check-input" type="checkbox" role="switch" id="contractSentSwitch">
+        <label class="form-check-label" for="contractSentSwitch">Contract Sent</label>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="form-check form-switch">
+        <input formControlName="dayOfTextSent" class="form-check-input" type="checkbox" role="switch" id="dayOfTextSentSwitch">
+        <label class="form-check-label" for="dayOfTextSentSwitch">Day-of Text Sent</label>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="form-check form-switch">
+        <input formControlName="confirmationTextSent" class="form-check-input" type="checkbox" role="switch" id="confirmationTextSentSwitch">
+        <label class="form-check-label" for="confirmationTextSentSwitch">Confirmation Text Sent</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- cake info fields -->
+  <div id="cakeDetailsHeader" *ngIf="isCakeDetailsHeaderShown">
+    <hr />
+    <h5>Cake Details</h5>
+  </div>
+  <div formArrayName="cakeTierInfo" *ngFor="let product of getControls('cakeTierInfo'); let i = index">
+    <div class="row " [formGroupName]="i">
+      <div class="col-md-1 mb-3 btn-group-sm d-flex align-items-center" role="group">
+        <button type="button" class="btn btn-outline-success" (click)="addRow('cakeTierInfo', getBlankCakeFormControls())"><b>+</b></button>
+        <button type="button" class="btn btn-outline-danger" (click)="deleteRow('cakeTierInfo', i)"><b>-</b></button>
+      </div>
+      <div class="col-md-2">
+        <div class="mb-3 form-floating">
+          <select formControlName="tierSize" [id]="'tierSize' + i" class="form-select form-select-md mb-3" aria-label="Cake Tier" required>
+            <option value=""></option>
+            <option value="cakeMicro">Micro</option>
+            <option value="cakeSixInch">6 inch</option>
+            <option value="cakeEightInch">8 inch</option>
+            <option value="cakeTenInch">10 inch</option>
+            <option value="cakeTwelveInch">12 inch</option>
+            <option value="cakeQuarterSheet">Quarter Sheet</option>
+            <option value="cakeHalfSheet">Half Sheet</option>
+          </select>
+          <label for="tierSize">Tier Size</label>
+        </div>
+      </div>
+      <div class="col-md-1">
+        <div class="mb-3 form-floating">
+          <input formControlName="numTierLayers" type="text" [id]="'numTierLayers' + i" class="form-control" autocomplete="disabled" required />
+          <label for="numTierLayers">#Layers</label>
+        </div>
+      </div>
+      <div class="col-md-1">
+        <div class="mb-3 form-floating">
+          <select formControlName="cakeShape" [id]="'cakeShape' + i" class="form-select form-select-md mb-3" aria-label="Shape" required>
+            <option value="shapeRound">Round</option>
+            <option value="shapeHeart">Heart</option>
+            <option value="shapeSquare">Square</option>
+          </select>
+          <label for="cakeShape">Shape</label>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="mb-3 form-floating">
+          <input formControlName="cakeFlavor" type="text" [id]="'cakeFlavor' + i" class="form-control" autocomplete="disabled" required />
+          <label for="cakeFlavor">Cake Flavor</label>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="mb-3 form-floating">
+          <input formControlName="fillingFlavor" type="text" [id]="'fillingFlavor' + i" class="form-control" autocomplete="disabled" required />
+          <label for="fillingFlavor">Filling Flavor</label>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="mb-3 form-floating">
+          <input formControlName="icingFlavor" type="text" [id]="'icingFlavor' + i" class="form-control" autocomplete="disabled" required />
+          <label for="icingFlavor">Icing Flavor</label>
+        </div>
+      </div>
+      <div class="col-md-1 form-check form-switch mb-3 d-flex align-items-center">
+        <input formControlName="splitTier" class="form-check-input" type="checkbox" role="switch" id="splitTierSwitch">
+        <label class="form-check-label" for="splitTierSwitch">Half?</label>
+      </div>
+    </div>
+  </div>
+
+   <!--cupcake info fields--> 
+  <div id="cupcakeDetailsHeader" *ngIf="isCupcakeDetailsHeaderShown">
+    <hr />
+    <h5>Cupcake Details</h5>
+  </div>
+  <div  formArrayName="cupcakeInfo" *ngFor="let product of getControls('cupcakeInfo'); let i = index">
+    <div class="row" [formGroupName]="i">
+      <div class="col-md-1 mb-3 btn-group-sm d-flex align-items-center" role="group">
+        <button type="button" class="btn btn-outline-success" (click)="addRow('cupcakeInfo', getBlankCupcakeFormControls())">+</button>
+        <button type="button" class="btn btn-outline-danger" (click)="deleteRow('cupcakeInfo', i)">-</button>
+      </div>
+      <div class="col-md-2">
+        <div class="mb-3 form-floating">
+          <select formControlName="cupcakeSize" [id]="'cupcakeSize' + i" class="form-select form-select-md mb-3" aria-label="Cupcake Type" required>
+            <option value="cupcakeRegular">Regular</option>
+            <option value="cupcakeMini">Mini</option>
+          </select>
+          <label for="cupcakeSize">Cupcake Size</label>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="mb-3 form-floating">
+          <input formControlName="cupcakeQuantity" type="text" [id]="'cupcakeQuantity' + i" class="form-control" autocomplete="disabled" required />
+          <label for="cupcakeQuantity">Quantity</label>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="mb-3 form-floating">
+          <input formControlName="cupcakeFlavor" type="text" [id]="'cupcakeFlavor' + i" class="form-control" autocomplete="disabled" required />
+          <label for="cupcakeFlavor">Cupcake Flavor</label>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="mb-3 form-floating">
+          <input formControlName="fillingFlavor" type="text" [id]="'fillingFlavor' + i" class="form-control" autocomplete="disabled" required />
+          <label for="fillingFlavor">Filling Flavor</label>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="mb-3 form-floating">
+          <input formControlName="icingFlavor" type="text" [id]="'icingFlavor' + i" class="form-control" autocomplete="disabled" required />
+          <label for="icingFlavor">Icing Flavor</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+   <!--pupcake info fields--> 
+  <div id="pupcakeDetailsHeader" *ngIf="isPupcakeDetailsHeaderShown">
+    <hr />
+    <h5>Pupcake Details</h5>
+  </div>
+  <div formArrayName="pupcakeInfo" *ngFor="let product of getControls('pupcakeInfo'); let i = index">
+    <div class="row" [formGroupName]="i">
+      <div class="col-md-1 mb-3 btn-group-sm d-flex align-items-center" role="group">
+        <button type="button" class="btn btn-outline-success" (click)="addRow('pupcakeInfo', getBlankPupcakeFormControls())">+</button>
+        <button type="button" class="btn btn-outline-danger" (click)="deleteRow('pupcakeInfo', i)">-</button>
+      </div>
+      <div class="col-md-2">
+        <div class="mb-3 form-floating">
+          <select formControlName="pupcakeSize" [id]="'pupcakeSize' + i" class="form-select form-select-md mb-3" aria-label="Order Type" required>
+            <option value="pupcakeRegular">Regular</option>
+            <option value="pupcakeMini">Mini</option>
+            <option value="pupcakeCake">Cake</option>
+          </select>
+          <label for="pupcakeSize">Pupcake Size</label>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="mb-3 form-floating">
+          <input formControlName="pupcakeQuantity" type="text" [id]="'pupcakeQuantity' + i" class="form-control" autocomplete="disabled" required />
+          <label for="pupcakeQuantity">Quantity</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+   <!--cookie info fields--> 
+  <div id="cookieDetailsHeader" *ngIf="isCookieDetailsHeaderShown">
+    <hr />
+    <h5>Cookie Details</h5>
+  </div>
+  <div class="row" formArrayName="cookieInfo" *ngFor="let product of getControls('cookieInfo'); let i = index">
+    <div class="row" [formGroupName]="i">
+      <div class="col-md-1 mb-3 btn-group-sm d-flex align-items-center" role="group">
+        <button type="button" class="btn btn-outline-success" (click)="addRow('cookieInfo', getBlankCookieFormControls())">+</button>
+        <button type="button" class="btn btn-outline-danger" (click)="deleteRow('cookieInfo', i)">-</button>
+      </div>
+      <div class="col-md-2">
+        <div class="mb-3 form-floating">
+          <select formControlName="cookieType" [id]="'cookieType' + i" class="form-select form-select-md mb-3" aria-label="Cookie Type" required>
+            <option value=""></option>
+            <option value="cookieChocChip">Chocolate Chip</option>
+            <option value="cookieMM">M&M</option>
+            <option value="cookiePeanutButter">Peanut Butter</option>
+            <option value="cookieOatmealRaisin">Oatmeal Raisin</option>
+            <option value="cookieGingerbread">Gingerbread</option>
+            <option value="cookiePumpkin">Pumpkin</option>
+            <option value="cookieSugarCookie">Sugar Cookie</option>
+          </select>
+          <label for="cookieType">Cookie Type</label>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="mb-3 form-floating">
+          <input formControlName="cookieQuantity" type="text" [id]="'cookieQuantity' + i" class="form-control" autocomplete="disabled" required />
+          <label for="cookieQuantity">Quantity</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- price fields -->
+  <hr />
+  <h5>Pricing and Deposit Information</h5>
+  <div class="row">
+    <div class="col-md-3">
+      <div class="mb-3 form-floating">
+        <input formControlName="totalCost" type="text" id="totalCost" class="form-control" autocomplete="disabled" />
+        <label for="totalCost">Total Cost</label>
+      </div>
+      <div class="mb-3 form-floating">
+        <input formControlName="depositAmount" type="text" id="depositAmount" class="form-control" autocomplete="disabled" />
+        <label for="depositAmount">Deposit Amount</label>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="mb-3 form-floating">
+        <input formControlName="depositPaymentMethod" type="text" id="depositPaymentMethod" class="form-control" autocomplete="disabled" />
+        <label for="depositPaymentMethod">Deposit Payment Method</label>
+      </div>
+      <div class="mb-3 form-floating">
+        <input formControlName="depositDateTime" type="datetime-local" data-provide="datepicker" id="depositDateTime" class="form-control" autocomplete="disabled" />
+        <label for="depositDateTime">Deposit Date/Time</label>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="mb-3 form-floating">
+        <input formControlName="finalPaymentMethod" type="text" id="finalPaymentMethod" class="form-control" autocomplete="disabled" />
+        <label for="finalPaymentMethod">Final Payment Method</label>
+      </div>
+      <div class="mb-3 form-floating">
+        <input formControlName="finalPaymentDateTime" type="datetime-local" data-provide="datepicker" id="finalPaymentDateTime" class="form-control" autocomplete="disabled" />
+        <label for="finalPaymentDateTime">Final Payment Date/Time</label>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="mb-3 form-floating">
+        <input formControlName="dateOrderPlaced" type="date" data-provide="datepicker" id="dateOrderPlaced" class="form-control" autocomplete="disabled" />
+        <label for="dateOrderPlaced">Date Order Placed</label>
+      </div>
+      <div class="mb-3 form-floating">
+        <div class="form-check form-switch d-flex justify-content-center">
+          <input formControlName="paidInFull" class="form-check-input" type="checkbox" role="switch" id="paidInFullSwitch">
+          <label class="form-check-label" for="paidInFullSwitch"> Paid in Full</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button (click)="updateOrder(orderToEdit)" *ngIf="orderToEdit.orderNumber" type="submit" class="btn btn-lg btn-outline-success">Update order</button>
+  <button (click)="deleteOrder(orderToEdit)" *ngIf="orderToEdit.orderNumber" type="submit" class="btn btn-lg btn-outline-danger">Delete order</button>
+  <button (click)="createOrder(orderToEdit)" *ngIf="!orderToEdit.orderNumber" type="submit" class="btn btn-lg btn-outline-success">Create order</button>
+</form>
+
+<!-- blank footer -->
+<br /><br /><br /><br /><br /><br />

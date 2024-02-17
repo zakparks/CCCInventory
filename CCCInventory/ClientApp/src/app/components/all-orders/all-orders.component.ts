@@ -1,5 +1,6 @@
 import { Component, Inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { NavigationExtras, Router } from '@angular/router';
 import { OrderService } from '../../services/order.service';
 import { Order } from '../../models/order';
 
@@ -10,15 +11,29 @@ import { Order } from '../../models/order';
 
 export class AllOrdersComponent {
   public orders!: Order[];
+  public orderToEdit! : Order;
 
-  constructor(private orderService: OrderService) { }
+  constructor(private orderService: OrderService, private router: Router) { }
 
   ngOnInit(): void {
     this.orderService
       .GetOrders()
       .subscribe(result => {
         this.orders = result;
-        console.log("this.orders: ", this.orders);
       });
+  }
+
+  initNewOrder() {
+    //this.orderToEdit = new Order();
+  }
+
+  editOrder(orderToEdit: number) {
+    let navDetails: NavigationExtras = {
+      queryParams: {
+        orderNumber: orderToEdit
+      }
+    };
+
+    this.router.navigate(["edit-order"], navDetails)
   }
 }

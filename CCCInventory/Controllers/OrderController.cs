@@ -5,6 +5,7 @@ using System.Reflection;
 
 namespace CCCInventory.Controllers
 {
+    // TODO - change the routes after the tutorial to make a little more sense in the URL
     [Route("api/[controller]")]
     [ApiController]
     public class OrderController : ControllerBase
@@ -20,6 +21,12 @@ namespace CCCInventory.Controllers
         public async Task<ActionResult<List<Order>>> GetOrders()
         {
             return Ok(await _context.Orders.ToListAsync());
+        }
+
+        [HttpGet("{orderNumber:int}")]
+        public async Task<ActionResult<Order>> GetOrder(int orderNumber)
+        {
+            return Ok(await _context.Orders.FirstOrDefaultAsync(order => order.OrderNumber == orderNumber));
         }
 
         [HttpPost]
@@ -49,6 +56,7 @@ namespace CCCInventory.Controllers
             return Ok(await _context.Orders.ToListAsync());
         }
 
+        // TODO - change the routes after the tutorial to make a little more sense in the URL
         [HttpDelete("{OrderNumber}")]
         public async Task<ActionResult<List<Order>>> DeleteOrder(int OrderNumber)
         {

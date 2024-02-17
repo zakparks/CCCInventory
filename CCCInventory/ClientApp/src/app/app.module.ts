@@ -4,19 +4,20 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
 import { RouterModule } from '@angular/router';
 
+
 import { AppComponent } from './app.component';
 import { NavMenuComponent } from './components/nav-menu/nav-menu.component';
 import { HomeComponent } from './components/home/home.component';
-import { NewOrderComponent } from './components/new-order/new-order.component';
 import { AllOrdersComponent } from './components/all-orders/all-orders.component';
+import { EditOrderComponent } from './components/edit-order/edit-order.component';
 
 @NgModule({
   declarations: [
     AppComponent,
     NavMenuComponent,
     HomeComponent,
-    NewOrderComponent,
-    AllOrdersComponent
+    AllOrdersComponent,
+    EditOrderComponent
   ],
   imports: [
     BrowserModule.withServerTransition({ appId: 'ng-cli-universal' }),
@@ -25,7 +26,7 @@ import { AllOrdersComponent } from './components/all-orders/all-orders.component
     ReactiveFormsModule,
     RouterModule.forRoot([
       { path: '', component: HomeComponent, pathMatch: 'full' },
-      { path: 'new-order', component: NewOrderComponent },
+      { path: 'edit-order', component: EditOrderComponent },
       { path: 'all-orders', component: AllOrdersComponent },
     ]),
   ],
