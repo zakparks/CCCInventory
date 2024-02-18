@@ -6,8 +6,7 @@ import { Pupcake } from "./pupcake";
 
 export class Order {
   orderNumber: number | undefined;
-  orderDate: Date | undefined;
-  pickupTime: Time | undefined;
+  orderDateTime: Date | undefined;
   deliveryLocation?: string;
   custName: string | undefined;
   custEmail: string | undefined;
@@ -33,4 +32,5 @@ export class Order {
   finalPaymentDateTime?: Date;
   dateOrderPlaced: Date | undefined;
   paidInFull?: boolean | undefined;
+  deleteFlag?: boolean | false;
 }

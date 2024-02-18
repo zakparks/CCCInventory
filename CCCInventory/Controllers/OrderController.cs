@@ -29,9 +29,20 @@ namespace CCCInventory.Controllers
             return Ok(await _context.Orders.FirstOrDefaultAsync(order => order.OrderNumber == orderNumber));
         }
 
+        [HttpGet("newOrderNumber")]
+        public async Task<ActionResult<int>> GetNewOrderNumber()
+        {
+            return Ok(await _context.Orders.MaxAsync(order => order.OrderNumber) + 1);
+        }
+
         [HttpPost]
         public async Task<ActionResult<List<Order>>> CreateOrder(Order order)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             _context.Orders.Add(order);
             await _context.SaveChangesAsync();
             return Ok(await _context.Orders.ToListAsync());
@@ -40,6 +51,11 @@ namespace CCCInventory.Controllers
         [HttpPut]
         public async Task<ActionResult<List<Order>>> UpdateOrder(Order order)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             var dbOrder = await _context.Orders.FindAsync(order.OrderNumber);
             if (dbOrder == null)
             {
@@ -56,7 +72,6 @@ namespace CCCInventory.Controllers
             return Ok(await _context.Orders.ToListAsync());
         }
 
-        // TODO - change the routes after the tutorial to make a little more sense in the URL
         [HttpDelete("{OrderNumber}")]
         public async Task<ActionResult<List<Order>>> DeleteOrder(int OrderNumber)
         {

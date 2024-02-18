@@ -30,13 +30,10 @@
         <label for="orderNumber">Order Number</label>
       </div>
       <div class="mb-3 form-floating">
-        <input formControlName="orderDate" type="date" id="orderDate" data-provide="datepicker" class="form-control" autocomplete="disabled" required />
-        <label for="orderDate">Order Delivery/Pickup Date</label>
+        <input formControlName="orderDateTime" type="datetime-local" id="orderDateTime" data-provide="datepicker" class="form-control" autocomplete="disabled" required />
+        <label for="orderDate">Delivery/Pickup Date/Time</label>
       </div>
-      <div class="mb-3 form-floating">
-        <input formControlName="pickupTime" type="text" id="pickupTime" class="form-control" autocomplete="disabled" required />
-        <label for="pickupTime">Pickup Time</label>
-      </div>
+      <!-- TODO : shuffle the UI around so that this input is longer -->
       <div class="mb-3 form-floating">
         <input formControlName="deliveryLocation" type="text" id="deliveryLocation" class="form-control" autocomplete="disabled" />
         <label for="deliveryLocation">Delivery/Pickup Location</label>
@@ -356,9 +353,9 @@
     </div>
   </div>
 
-  <button (click)="updateOrder(orderToEdit)" *ngIf="orderToEdit.orderNumber" type="submit" class="btn btn-lg btn-outline-success">Update order</button>
-  <button (click)="deleteOrder(orderToEdit)" *ngIf="orderToEdit.orderNumber" type="submit" class="btn btn-lg btn-outline-danger">Delete order</button>
-  <button (click)="createOrder(orderToEdit)" *ngIf="!orderToEdit.orderNumber" type="submit" class="btn btn-lg btn-outline-success">Create order</button>
+  <button (click)="updateOrder()" *ngIf="createOrUpdate === 'Update'" type="submit" class="btn btn-lg btn-outline-success">Update order</button>
+  <button (click)="deleteOrder()" *ngIf="createOrUpdate === 'Update'" type="submit" class="btn btn-lg btn-outline-danger">Delete order</button>
+  <button (click)="createOrder()" *ngIf="createOrUpdate === 'Create'" type="submit" class="btn btn-lg btn-outline-success">Create order</button>
 </form>
 
 <!-- blank footer -->

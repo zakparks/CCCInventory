@@ -22,4 +22,20 @@ export class OrderService {
     console.log("url is: " + tmp);
     return this.http.get<Order>(tmp);
   }
+
+  public AddOrder(order: Order): Observable<Order[]> {
+    return this.http.post<Order[]>(`${environment.apiUrl}/${this.url}`, order);
+  }
+
+  public UpdateOrder(order: Order): Observable<Order[]> {
+    return this.http.put<Order[]>(`${environment.apiUrl}/${this.url}`, order);
+  }
+
+  public DeleteOrder(orderNumber: number): Observable<Order[]> {
+    return this.http.delete<Order[]>(`${environment.apiUrl}/${this.url}/${orderNumber}`);
+  }
+
+  public GetNewOrderNumber(): Observable<number> {
+    return this.http.get<number>(`${environment.apiUrl}/${this.url}/newOrderNumber`);
+  }
 }

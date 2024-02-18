@@ -1,8 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, EventEmitter, Output } from '@angular/core';
 import { FormGroup, FormControl, FormBuilder, Validators, AbstractControl, EmailValidator, FormArray } from '@angular/forms';
 import { Order } from '../../models/order';
 import { ActivatedRoute } from '@angular/router';
 import { OrderService } from '../../services/order.service';
+import { switchMap } from 'rxjs/operators';
 
 @Component({
   selector: 'app-edit-order-component',
@@ -10,145 +11,153 @@ import { OrderService } from '../../services/order.service';
 })
 
 export class EditOrderComponent implements OnInit {
+  @Output() orderUpdated = new EventEmitter<Order>();
 
   onSubmit() {
     console.log(this.editOrderFormGroup.value);
   }
 
-  constructor(private _formBuilder: FormBuilder, private route: ActivatedRoute, private orderService: OrderService) {
-    this.route.queryParams.subscribe(params => {
-      this.editOrder(params["orderNumber"]);
-    })
-  }
+  constructor(private _formBuilder: FormBuilder, private route: ActivatedRoute, private orderService: OrderService) { }
+
+  // used to decide which CRUD buttons to show
+  public createOrUpdate: string = "Create";
 
   public orderToEdit: Order = new Order();
 
+  // toggles for showing/hiding details headers
   isCakeDetailsHeaderShown: boolean = false;
   isCupcakeDetailsHeaderShown: boolean = false;
   isPupcakeDetailsHeaderShown: boolean = false;
   isCookieDetailsHeaderShown: boolean = false;
 
-  editOrderFormGroup!: FormGroup;
+  // main form group
+  editOrderFormGroup: FormGroup = this._formBuilder.group({
+    orderNumber: ['', Validators.required],
+    orderDateTime: ['', Validators.required],
+    pickupTime: ['', Validators.required],
+    deliveryLocation: [''],
+    custName: ['', Validators.required],
+    custEmail: ['', Validators.required],
+    custPhone: ['', Validators.required],
+    formFiles: [''],
+    details: [''],
+    pickupOrDelivery: [''],
+    secondaryName: [''],
+    secondaryPhone: [''],
+    initialContact: [''],
+    contractSent: [''],
+    dayOfTextSent: [''],
+    confirmationTextSent: [''],
+    cakes: [''],
+    cupcakes: [''],
+    pupcakes: [''],
+    cookies: [''],
+    totalCost: [''],
+    depositAmount: [''],
+    depositPaymentMethod: [''],
+    depositDateTime: [''],
+    finalPaymentMethod: [''],
+    finalPaymentDateTime: [''],
+    dateOrderPlaced: ['', Validators.required],
+    paidInFull: [''],
+    cakeTierInfo: this._formBuilder.array([]),
+    cupcakeInfo: this._formBuilder.array([]),
+    pupcakeInfo: this._formBuilder.array([]),
+    cookieInfo: this._formBuilder.array([])
+  });
 
+  // initialize the order form, either based on the order number passed in the query params or a new order
   ngOnInit() {
-    // initialize the form with default/blank values
-    this.editOrderFormGroup = this._formBuilder.group({
-      orderNumber: ['', Validators.required],
-      orderDate: ['', Validators.required],
-      pickupTime: ['', Validators.required],
-      deliveryLocation: [''],
-      custName: ['', Validators.required],
-      custEmail: ['', Validators.required],
-      custPhone: ['', Validators.required],
-      formFiles: [''],
-      details: [''],
-      pickupOrDelivery: [''],
-      secondaryName: [''],
-      secondaryPhone: [''],
-      initialContact: [''],
-      contractSent: [''],
-      dayOfTextSent: [''],
-      confirmationTextSent: [''],
-      cakes: [''],
-      cupcakes: [''],
-      pupcakes: [''],
-      cookies: [''],
-      totalCost: [''],
-      depositAmount: [''],
-      depositPaymentMethod: [''],
-      depositDateTime: [''],
-      finalPaymentMethod: [''],
-      finalPaymentDateTime: [''],
-      dateOrderPlaced: ['', Validators.required],
-      paidInFull: [''],
-      cakeTierInfo: this._formBuilder.array([]),
-      cupcakeInfo: this._formBuilder.array([]),
-      pupcakeInfo: this._formBuilder.array([]),
-      cookieInfo: this._formBuilder.array([])
+    this.route.queryParams.pipe(
+      switchMap(params => {
+        if (params["orderNumber"]) {
+          this.createOrUpdate = "Update";
+          return this.orderService.GetOrder(params["orderNumber"]);
+        } else {
+          this.createOrUpdate = "Create";
+          return this.orderService.GetNewOrderNumber();
+        }
+      })
+    ).subscribe(result => {
+      if (typeof result === 'number') {
+        this.orderToEdit = {
+          ...this.orderToEdit,
+          orderNumber: result,
+          dateOrderPlaced: new Date()
+        };
+      } else {
+        this.orderToEdit = result;
+      }
+      this.initOrderFormGroup();
+    });
+  }
+
+  initOrderFormGroup() {
+    this.editOrderFormGroup.patchValue({
+      orderNumber: this.orderToEdit.orderNumber,
+      orderDateTime: this.orderToEdit.orderDateTime,
+      deliveryLocation: this.orderToEdit.deliveryLocation,
+      custName: this.orderToEdit.custName,
+      custEmail: this.orderToEdit.custEmail,
+      custPhone: this.orderToEdit.custPhone,
+      formFiles: this.orderToEdit.formFiles,
+      details: this.orderToEdit.details,
+      pickupOrDelivery: this.orderToEdit.pickupOrDelivery,
+      secondaryName: this.orderToEdit.secondaryName,
+      secondaryPhone: this.orderToEdit.secondaryPhone,
+      initialContact: this.orderToEdit.initialContact,
+      contractSent: this.orderToEdit.contractSent,
+      dayOfTextSent: this.orderToEdit.dayOfTextSent,
+      confirmationTextSent: this.orderToEdit.confirmationTextSent,
+      totalCost: this.orderToEdit.totalCost,
+      depositAmount: this.orderToEdit.depositAmount,
+      depositPaymentMethod: this.orderToEdit.depositPaymentMethod,
+      depositDateTime: this.orderToEdit.depositDateTime,
+      finalPaymentMethod: this.orderToEdit.finalPaymentMethod,
+      finalPaymentDateTime: this.orderToEdit.finalPaymentDateTime,
+      dateOrderPlaced: this.formatDate(this.orderToEdit.dateOrderPlaced!),
+      paidInFull: this.orderToEdit.paidInFull
     });
 
-    // set the order date to today for new orders
-    if (!this.orderToEdit.dateOrderPlaced) {
-      this.setOrderDate();
-    }
-  }
+    const cakeTierInfo = this.editOrderFormGroup.get('cakeTierInfo') as FormArray;
+    this.orderToEdit.cakes?.forEach(cake => {
+      cakeTierInfo.push(this._formBuilder.group({
+        tierSize: [cake.tierSize],
+        numTierLayers: [cake.numTierLayers],
+        cakeShape: [cake.cakeShape],
+        cakeFlavor: [cake.cakeFlavor],
+        fillingFlavor: [cake.fillingFlavor],
+        icingFlavor: [cake.icingFlavor],
+        splitTier: [cake.splitTier]
+      }));
+    });
 
-  editOrder(orderNumber: number) {
-    if (orderNumber) {
-      this.orderService
-        .GetOrder(orderNumber)
-        .subscribe(result => {
-          this.orderToEdit = result;
-          console.log("orderToEdit:");
-          console.log(this.orderToEdit);
+    const cupcakeInfo = this.editOrderFormGroup.get('cupcakeInfo') as FormArray;
+    this.orderToEdit.cupcakes?.forEach(cupcake => {
+      cupcakeInfo.push(this._formBuilder.group({
+        cupcakeSize: [cupcake.cupcakeSize],
+        cupcakeQuantity: [cupcake.cupcakeQuantity],
+        cupcakeFlavor: [cupcake.cupcakeFlavor],
+        fillingFlavor: [cupcake.fillingFlavor],
+        icingFlavor: [cupcake.icingFlavor]
+      }));
+    });
 
-          // intialize the form with the order details
-          this.initExistingOrder()
-        });
-    } else {
-      this.initNewOrder();
-    }
-  }
-  
-  initNewOrder() {
-    this.orderToEdit = new Order();
-  }
+    const pupcakeInfo = this.editOrderFormGroup.get('pupcakeInfo') as FormArray;
+    this.orderToEdit.pupcakes?.forEach(pupcake => {
+      pupcakeInfo.push(this._formBuilder.group({
+        pupcakeSize: [pupcake.pupcakeSize],
+        pupcakeQuantity: [pupcake.pupcakeQuantity]
+      }));
+    });
 
-  initExistingOrder() {
-    this.editOrderFormGroup = this._formBuilder.group({
-      orderNumber: [this.orderToEdit.orderNumber, Validators.required],
-      orderDate: [this.orderToEdit.orderDate, Validators.required],
-      pickupTime: [this.orderToEdit.pickupTime, Validators.required],
-      deliveryLocation: [this.orderToEdit.deliveryLocation],
-      custName: [this.orderToEdit.custName, Validators.required],
-      custEmail: [this.orderToEdit.custEmail, Validators.required],
-      custPhone: [this.orderToEdit.custPhone, Validators.required],
-      formFiles: [this.orderToEdit.formFiles],
-      details: [this.orderToEdit.details],
-      pickupOrDelivery: [this.orderToEdit.pickupOrDelivery],
-      secondaryName: [this.orderToEdit.secondaryName],
-      secondaryPhone: [this.orderToEdit.secondaryPhone],
-      initialContact: [this.orderToEdit.initialContact],
-      contractSent: [this.orderToEdit.contractSent],
-      dayOfTextSent: [this.orderToEdit.dayOfTextSent],
-      confirmationTextSent: [this.orderToEdit.confirmationTextSent],
-      cakes: [this.orderToEdit.cakes],
-      cupcakes: [this.orderToEdit.cupcakes],
-      pupcakes: [this.orderToEdit.pupcakes],
-      cookies: [this.orderToEdit.cookies],
-      totalCost: [this.orderToEdit.totalCost],
-      depositAmount: [this.orderToEdit.depositAmount],
-      depositPaymentMethod: [this.orderToEdit.depositPaymentMethod],
-      depositDateTime: [this.orderToEdit.depositDateTime],
-      finalPaymentMethod: [this.orderToEdit.finalPaymentMethod],
-      finalPaymentDateTime: [this.orderToEdit.finalPaymentDateTime],
-      dateOrderPlaced: [this.formatDate(this.orderToEdit.dateOrderPlaced!), Validators.required],
-      paidInFull: [this.orderToEdit.paidInFull],
-      cakeTierInfo: this._formBuilder.array(this.orderToEdit.cakes?.map(cake => this._formBuilder.group({
-        tierSize: [cake.tierSize, Validators.required],
-        numTierLayers: [cake.numTierLayers, Validators.required],
-        cakeShape: [cake.cakeShape, Validators.required],
-        cakeFlavor: [cake.cakeFlavor, Validators.required],
-        fillingFlavor: [cake.fillingFlavor, Validators.required],
-        icingFlavor: [cake.icingFlavor, Validators.required],
-        splitTier: [cake.splitTier || false]
-      })) || []),
-      cupcakeInfo: this._formBuilder.array(this.orderToEdit.cupcakes?.map(cupcake => this._formBuilder.group({
-        cupcakeSize: [cupcake.cupcakeSize, Validators.required],
-        cupcakeQuantity: [cupcake.cupcakeQuantity, Validators.required],
-        cupcakeFlavor: [cupcake.cupcakeFlavor, Validators.required],
-        fillingFlavor: [cupcake.fillingFlavor, Validators.required],
-        icingFlavor: [cupcake.icingFlavor, Validators.required]
-      })) || []),
-      pupcakeInfo: this._formBuilder.array(this.orderToEdit.pupcakes?.map(pupcake => this._formBuilder.group({
-        pupcakeSize: [pupcake.pupcakeSize, Validators.required],
-        pupcakeQuantity: [pupcake.pupcakeQuantity, Validators.required]
-      })) || []),
-      cookieInfo: this._formBuilder.array(this.orderToEdit.cookies?.map(cookie => this._formBuilder.group({
-        cookieType: [cookie.cookieType, Validators.required],
-        cookieQuantity: [cookie.cookieQuantity, Validators.required]
-      })) || [])
-    }); 
+    const cookieInfo = this.editOrderFormGroup.get('cookieInfo') as FormArray;
+    this.orderToEdit.cookies?.forEach(cookie => {
+      cookieInfo.push(this._formBuilder.group({
+        cookieType: [cookie.cookieType],
+        cookieQuantity: [cookie.cookieQuantity]
+      }));
+    });
   }
 
   // format date to yyyy-mm-dd
@@ -167,14 +176,44 @@ export class EditOrderComponent implements OnInit {
   }
 
   // ng crud buttons
-  updateOrder(order: Order) { }
+  updateOrder() {
+    const { cakeTierInfo, cupcakeInfo, pupcakeInfo, cookieInfo, ...formValue } = this.editOrderFormGroup.value;
 
-  deleteOrder(order: Order) { }
+    this.orderToEdit = {
+      ...formValue,
+      cakes: cakeTierInfo,
+      cupcakes: cupcakeInfo,
+      pupcakes: pupcakeInfo,
+      cookies: cookieInfo
+    };
 
-  createOrder(order: Order) { }
+    console.log("order to update:");
+    console.log(this.orderToEdit);
 
-  setOrderDate(): void {
-    this.orderToEdit.dateOrderPlaced = new Date();
+    this.orderService
+      .UpdateOrder(this.orderToEdit)
+      .subscribe(result => {
+        this.orderUpdated.emit(this.orderToEdit);
+        console.log(`Order ${this.orderToEdit.orderNumber} updated.`);
+      });
+  }
+
+  deleteOrder() {
+    this.orderToEdit.deleteFlag = true;
+    this.orderService
+      .UpdateOrder(this.orderToEdit)
+      .subscribe(result => {
+        console.log(`Order ${this.orderToEdit.orderNumber} marked as deleted.`);
+      });
+  }
+
+  createOrder() {
+    this.orderService
+    .AddOrder(this.orderToEdit)
+      .subscribe(result => {
+        this.orderUpdated.emit(this.orderToEdit);
+        console.log(`Order ${this.orderToEdit.orderNumber} created.`);
+      });
   }
 
   // add/remove/get rows for Cake, Cupcake, Pupcake, and Cookie
@@ -191,6 +230,7 @@ export class EditOrderComponent implements OnInit {
   deleteRow(formGroupName: string, index: number) {
     const formArray = this.editOrderFormGroup.get(formGroupName) as FormArray;
     formArray.removeAt(index);
+
     if (formArray.length === 0) {
       const propertyName = `is${this.capitalize(formGroupName)}DetailsHeaderShown`;
       (this as any)[propertyName] = false;

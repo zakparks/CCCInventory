@@ -6,8 +6,7 @@ namespace CCCInventory
     {
         [Key]
         public int OrderNumber { get; set; }
-        public DateTime? OrderDate { get; set; }
-        public DateTime? PickupTime { get; set; }
+        public DateTime? OrderDateTime { get; set; }
         public string? DeliveryLocation { get; set; }
         public string? CustName { get; set; }
         public string? CustEmail { get; set; }
@@ -33,5 +32,6 @@ namespace CCCInventory
         public DateTime? FinalPaymentDateTime { get; set; }
         public DateTime DateOrderPlaced { get; set; }
         public bool? PaidInFull { get; set; }
+        public bool DeleteFlag { get; set; } = false;
     }
 }
