@@ -67,6 +67,7 @@ export class EditOrderComponent implements OnInit {
   });
 
   // initialize the order form, either based on the order number passed in the query params or a new order
+  // use a switchmap to ensure orderToEdit is set before initializing the form
   ngOnInit() {
     this.route.queryParams.pipe(
       switchMap(params => {
@@ -175,6 +176,12 @@ export class EditOrderComponent implements OnInit {
     return [year, month, day].join('-');
   }
 
+  onTotalCostInput(event: Event, controlName: string) {
+    const input = event.target as HTMLInputElement;
+    const strippedValue = input.value.replace(/[^0-9.]/g, '');
+    this.editOrderFormGroup.controls[controlName].setValue(strippedValue);
+  }
+
   // ng crud buttons
   updateOrder() {
     const { cakeTierInfo, cupcakeInfo, pupcakeInfo, cookieInfo, ...formValue } = this.editOrderFormGroup.value;
@@ -186,9 +193,6 @@ export class EditOrderComponent implements OnInit {
       pupcakes: pupcakeInfo,
       cookies: cookieInfo
     };
-
-    console.log("order to update:");
-    console.log(this.orderToEdit);
 
     this.orderService
       .UpdateOrder(this.orderToEdit)
@@ -208,8 +212,9 @@ export class EditOrderComponent implements OnInit {
   }
 
   createOrder() {
+    this.orderToEdit.orderNumber ;
     this.orderService
-    .AddOrder(this.orderToEdit)
+      .AddOrder(this.orderToEdit)
       .subscribe(result => {
         this.orderUpdated.emit(this.orderToEdit);
         console.log(`Order ${this.orderToEdit.orderNumber} created.`);

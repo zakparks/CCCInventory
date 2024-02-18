@@ -24,7 +24,9 @@ export class OrderService {
   }
 
   public AddOrder(order: Order): Observable<Order[]> {
-    return this.http.post<Order[]>(`${environment.apiUrl}/${this.url}`, order);
+    // Create a copy of the order object without the orderNumber property
+    const { orderNumber, ...orderWithoutOrderNumber } = order;
+    return this.http.post<Order[]>(`${environment.apiUrl}/${this.url}`, orderWithoutOrderNumber);
   }
 
   public UpdateOrder(order: Order): Observable<Order[]> {

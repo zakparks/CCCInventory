@@ -20,7 +20,7 @@ namespace CCCInventory.Controllers
         [HttpGet]
         public async Task<ActionResult<List<Order>>> GetOrders()
         {
-            return Ok(await _context.Orders.ToListAsync());
+            return Ok(await _context.Orders.Where(order => !order.DeleteFlag).ToListAsync());
         }
 
         [HttpGet("{orderNumber:int}")]

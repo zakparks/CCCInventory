@@ -311,12 +311,14 @@
   <div class="row">
     <div class="col-md-3">
       <div class="mb-3 form-floating">
-        <input formControlName="totalCost" type="text" id="totalCost" class="form-control" autocomplete="disabled" />
-        <label for="totalCost">Total Cost</label>
+        <input formControlName="totalCost" type="hidden" id="totalCost" class="form-control" autocomplete="disabled" />
+        <input type="text" id="totalCostFormatted" class="form-control" [value]="editOrderFormGroup.controls['totalCost'].value | currency" (blur)="onTotalCostInput($event, 'totalCost')" />
+        <label for="totalCostFormatted">Total Cost</label>
       </div>
       <div class="mb-3 form-floating">
-        <input formControlName="depositAmount" type="text" id="depositAmount" class="form-control" autocomplete="disabled" />
-        <label for="depositAmount">Deposit Amount</label>
+        <input formControlName="depositAmount" type="hidden" id="depositAmount" class="form-control" autocomplete="disabled" />
+        <input type="text" id="depositAmountFormatted" class="form-control" [value]="editOrderFormGroup.controls['depositAmount'].value | currency" (blur)="onTotalCostInput($event, 'depositAmount')" />
+        <label for="depositAmountFormatted">Deposit Amount</label>
       </div>
     </div>
     <div class="col-md-3">
