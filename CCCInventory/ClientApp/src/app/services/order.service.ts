@@ -23,18 +23,18 @@ export class OrderService {
     return this.http.get<Order>(tmp);
   }
 
-  public AddOrder(order: Order): Observable<Order[]> {
+  public AddOrder(order: Order): Observable<number> {
     // Create a copy of the order object without the orderNumber property
     const { orderNumber, ...orderWithoutOrderNumber } = order;
-    return this.http.post<Order[]>(`${environment.apiUrl}/${this.url}`, orderWithoutOrderNumber);
+    return this.http.post<number>(`${environment.apiUrl}/${this.url}`, orderWithoutOrderNumber);
   }
 
-  public UpdateOrder(order: Order): Observable<Order[]> {
-    return this.http.put<Order[]>(`${environment.apiUrl}/${this.url}`, order);
+  public UpdateOrder(order: Order): Observable<number> {
+    return this.http.put<number>(`${environment.apiUrl}/${this.url}`, order);
   }
 
-  public DeleteOrder(orderNumber: number): Observable<Order[]> {
-    return this.http.delete<Order[]>(`${environment.apiUrl}/${this.url}/${orderNumber}`);
+  public DeleteOrder(orderNumber: number): Observable<number> {
+    return this.http.delete<number>(`${environment.apiUrl}/${this.url}/${orderNumber}`);
   }
 
   public GetNewOrderNumber(): Observable<number> {

@@ -9,7 +9,7 @@ export class Order {
   orderDateTime: Date | undefined;
   deliveryLocation?: string;
   custName: string | undefined;
-  custEmail: string | undefined;
+  custEmail?: string | undefined;
   custPhone: string | undefined;
   formFiles?: Array<File>;
   details: string | undefined;

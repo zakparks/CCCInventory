@@ -1,8 +1,17 @@
 <h1 id="tableLabel">All Orders</h1>
 
-<p *ngIf="!orders"><em>Loading...</em></p>
+<p *ngIf="!orders$"><em>Loading...</em></p>
 
-<div *ngIf="orders">
+<div *ngIf="orders$">
+  <form>
+    <div class="mb-3 row">
+      <label for="table-filtering-search" class="col-xs-3 col-sm-auto col-form-label">Search all orders:</label>
+      <div class="col-xs-3 col-sm-auto">
+        <input id="table-filtering-search" class="form-control" type="text" [formControl]="filter" />
+      </div>
+    </div>
+  </form>
+
   <table class='table table-striped' aria-labelledby="tableLabel">
     <thead>
       <tr>
@@ -14,15 +23,18 @@
       </tr>
     </thead>
     <tbody>
-      <tr *ngFor="let order of orders">
-        <td>{{ order.orderNumber }}</td>
-        <td>{{ order.details }}</td>
-        <td>{{ order.custName }}</td>
-        <td>{{ order.custEmail }}</td>
+      @for (order of filteredOrders$ | async; track order.orderNumber; let i = $index) {
+      <tr>
+        <th scope="row">{{ order.orderNumber }}</th>
+        <td><ngb-highlight [result]="order.custName" [term]="filter.value" /></td>
+        <td><ngb-highlight [result]="order.details" [term]="filter.value" /></td>
+        <td><ngb-highlight [result]="order.custEmail" [term]="filter.value" /></td>
         <td><button (click)="editOrder(order.orderNumber!)">Edit</button></td>
       </tr>
-    </tbody>
-  </table>
+      } @empty {
+      <tr>
+        <td colspan="4" style="text-align: center">No orders found</td>
+      </tr>
+      }
+</table>
 </div>
-
-<!--<app-edit-order-component [editOrder]="orderToEdit"></app-edit-order-component>-->

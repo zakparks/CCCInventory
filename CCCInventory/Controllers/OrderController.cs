@@ -36,7 +36,8 @@ namespace CCCInventory.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<List<Order>>> CreateOrder(Order order)
+        // returns the orderNumber of the newest order in the database
+        public async Task<ActionResult<int>> CreateOrder(Order order)
         {
             if (!ModelState.IsValid)
             {
@@ -45,11 +46,18 @@ namespace CCCInventory.Controllers
 
             _context.Orders.Add(order);
             await _context.SaveChangesAsync();
-            return Ok(await _context.Orders.ToListAsync());
+            int latestOrderNumber = await _context.Orders.MaxAsync(order => order.OrderNumber);
+
+            if (order.OrderNumber != latestOrderNumber)
+            {
+                return BadRequest($"Order {order.OrderNumber} not created");
+            }
+
+            return Ok(latestOrderNumber);
         }
 
         [HttpPut]
-        public async Task<ActionResult<List<Order>>> UpdateOrder(Order order)
+        public async Task<ActionResult<int>> UpdateOrder(Order order)
         {
             if (!ModelState.IsValid)
             {
@@ -68,12 +76,16 @@ namespace CCCInventory.Controllers
                 property.SetValue(dbOrder, property.GetValue(order, null), null);
             }
 
-            await _context.SaveChangesAsync();
-            return Ok(await _context.Orders.ToListAsync());
+            if (await _context.SaveChangesAsync() == 0)
+            {
+                return BadRequest($"Order {order.OrderNumber} not created");
+            }
+
+            return Ok(order.OrderNumber);
         }
 
         [HttpDelete("{OrderNumber}")]
-        public async Task<ActionResult<List<Order>>> DeleteOrder(int OrderNumber)
+        public async Task<ActionResult<int>> DeleteOrder(int OrderNumber)
         {
             var dbOrder = await _context.Orders.FindAsync(OrderNumber);
             if (dbOrder == null)
@@ -82,8 +94,13 @@ namespace CCCInventory.Controllers
             }
 
             _context.Orders.Remove(dbOrder);
-            await _context.SaveChangesAsync();
-            return Ok(await _context.Orders.ToListAsync());
+
+            if (await _context.SaveChangesAsync() == 0)
+            { 
+                return BadRequest($"Order {OrderNumber} not marked as deleted");
+            }
+
+            return Ok(OrderNumber);
         }
     }
 }
