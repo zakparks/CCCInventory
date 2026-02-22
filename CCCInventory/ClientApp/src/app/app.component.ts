@@ -8,6 +8,4 @@ import { NavMenuComponent } from './components/nav-menu/nav-menu.component';
   imports: [RouterOutlet, NavMenuComponent],
   templateUrl: './app.component.html'
 })
-export class AppComponent {
-  title = 'app';
-}
+export class AppComponent { }

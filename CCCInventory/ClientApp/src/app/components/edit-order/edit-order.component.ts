@@ -1,4 +1,4 @@
-import { Component, OnInit, EventEmitter, Output, Renderer2, ElementRef } from '@angular/core';
+import { Component, OnInit, Renderer2, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormGroup, FormBuilder, Validators, AbstractControl, FormArray } from '@angular/forms';
 import { RouterModule, ActivatedRoute, NavigationExtras, Router } from '@angular/router';
@@ -20,8 +20,6 @@ import { switchMap } from 'rxjs/operators';
 })
 
 export class EditOrderComponent implements OnInit {
-  @Output() orderUpdated = new EventEmitter<Order>();
-
   attachments: OrderAttachment[] = [];
 
   // Option lists loaded from API
@@ -74,7 +72,6 @@ export class EditOrderComponent implements OnInit {
     custName: ['', Validators.required],
     custEmail: [''],
     custPhone: ['', Validators.required],
-    formFiles: [''],
     details: [''],
     pickupOrDelivery: [''],
     secondaryName: [''],
@@ -261,7 +258,6 @@ export class EditOrderComponent implements OnInit {
         .UpdateOrder(this.orderToEdit)
         .subscribe((result: number) => {
           if (result === this.orderToEdit.orderNumber) {
-            this.orderUpdated.emit(this.orderToEdit);
             this.onSubmitSuccess(`Order ${this.orderToEdit.orderNumber} updated.`);
           }
         },
@@ -324,7 +320,6 @@ export class EditOrderComponent implements OnInit {
         .subscribe((result: number) => {
           // Use the server-assigned order number, not the pre-filled estimate
           this.orderToEdit = { ...this.orderToEdit, orderNumber: result };
-          this.orderUpdated.emit(this.orderToEdit);
           this.onSubmitSuccess(`Order ${result} created.`);
         },
           error => {

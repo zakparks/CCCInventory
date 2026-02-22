@@ -11,15 +11,14 @@ namespace CCCInventory
         public string? CustName { get; set; }
         public string? CustEmail { get; set; }
         public string? CustPhone { get; set; }
-        List<string>? FormFiles { get; set; }
         public string? Details { get; set; }
         public bool? PickupOrDelivery { get; set; }
         public string? SecondaryName { get; set; }
         public string? SecondaryPhone { get; set; }
         public string? InitialContact { get; set; }
-        public bool ContractSent { get; set; } = false;
-        public bool DayOfTextSent { get; set; } = false;
-        public bool ConfirmationTextSent { get; set; } = false;
+        public bool ContractSent { get; set; }
+        public bool DayOfTextSent { get; set; }
+        public bool ConfirmationTextSent { get; set; }
         public List<Cake>? Cakes { get; set; }
         public List<Cupcake>? Cupcakes { get; set; }
         public List<Pupcake>? Pupcakes { get; set; }
@@ -32,6 +31,6 @@ namespace CCCInventory
         public DateTime? FinalPaymentDateTime { get; set; }
         public DateTime DateOrderPlaced { get; set; }
         public bool? PaidInFull { get; set; }
-        public bool DeleteFlag { get; set; } = false;
+        public bool DeleteFlag { get; set; }
     }
 }

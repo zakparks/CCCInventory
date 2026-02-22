@@ -1,4 +1,3 @@
-import { Time } from "@angular/common";
 import { Cake } from "./cake";
 import { Cookie } from "./cookie";
 import { Cupcake } from "./cupcake";
@@ -11,7 +10,6 @@ export class Order {
   custName: string | undefined;
   custEmail?: string | undefined;
   custPhone: string | undefined;
-  formFiles?: Array<File>;
   details: string | undefined;
   pickupOrDelivery: boolean | undefined;
   secondaryName?: string;
