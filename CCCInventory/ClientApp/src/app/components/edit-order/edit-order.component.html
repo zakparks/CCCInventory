@@ -1,106 +1,107 @@
 <h1>Order Form</h1>
 
-<form class="row g-3" [formGroup]="editOrderFormGroup" (ngSubmit)="onSubmit()" autocomplete="off" novalidate ngNativeValidate>
+<form class="row g-3" [formGroup]="editOrderFormGroup" (ngSubmit)="onSubmit()" autocomplete="off" novalidate>
   <hr />
   <h5>Add to order:</h5>
-  <div class="row">
-    <div class="col-md-1">
-      <button type="button" class="btn btn-outline-primary" style="width: 100px" (click)="addRow('cakeTierInfo', getBlankCakeFormControls())">Cake</button>
-    </div>
-    <div class="col-md-1">
-      <button type="button" class="btn btn-outline-primary" style="width: 100px" (click)="addRow('cupcakeInfo', getBlankCupcakeFormControls())">Cupcakes</button>
-    </div>
-    <div class="col-md-1">
-      <button type="button" class="btn btn-outline-primary" style="width: 100px" (click)="addRow('pupcakeInfo', getBlankPupcakeFormControls())">Pupcakes</button>
-    </div>
-    <div class="col-md-1">
-      <button type="button" class="btn btn-outline-primary" style="width: 100px" (click)="addRow('cookieInfo', getBlankCookieFormControls())">Cookies </button>
-    </div>
+  <div class="d-flex flex-wrap gap-2">
+    <button type="button" class="btn btn-outline-primary" style="width: 110px" (click)="addRow('cakeTierInfo', getBlankCakeFormControls())">Cake</button>
+    <button type="button" class="btn btn-outline-primary" style="width: 110px" (click)="addRow('cupcakeInfo', getBlankCupcakeFormControls())">Custom Cupcakes</button>
+    <button type="button" class="btn btn-outline-secondary" style="width: 130px" (click)="addSignatureCupcakeRow()">Signature Cupcakes</button>
+    <button type="button" class="btn btn-outline-primary" style="width: 110px" (click)="addRow('pupcakeInfo', getBlankPupcakeFormControls())">Pupcakes</button>
+    <button type="button" class="btn btn-outline-primary" style="width: 110px" (click)="addRow('cookieInfo', getBlankCookieFormControls())">Cookies</button>
   </div>
 
-  <!-- standard fields -->
+  <!-- datalists for autocomplete -->
+  <datalist id="flavorsList">
+    @for (v of flavors; track v) { <option [value]="v"></option> }
+  </datalist>
+  <datalist id="fillingFlavorsList">
+    @for (v of fillingFlavors; track v) { <option [value]="v"></option> }
+  </datalist>
+  <datalist id="icingFlavorsList">
+    @for (v of icingFlavors; track v) { <option [value]="v"></option> }
+  </datalist>
+  <datalist id="signaturesList">
+    @for (s of signaturesForForm; track s.id) { <option [value]="s.name"></option> }
+  </datalist>
+
+  <!-- order information -->
   <hr />
   <h5>Order Information</h5>
   <div class="row">
-
-    <!-- order information -->
     <div class="col-md-3">
       <div class="mb-3 form-floating">
-        <input formControlName="orderNumber" type="text" id="orderNumber" class="form-control" autocomplete="disabled" readonly />
+        <input formControlName="orderNumber" type="text" id="orderNumber" class="form-control" readonly />
         <label for="orderNumber">Order Number</label>
       </div>
       <div class="mb-3 form-floating">
-        <input formControlName="orderDateTime" type="datetime-local" id="orderDateTime" data-provide="datepicker" class="form-control" autocomplete="disabled" [ngClass]="{'is-invalid': isInvalid('orderDateTime')}" required />
-        <label for="orderDateTime">Delivery/Pickup Date and Time</label>
+        <input formControlName="orderDateTime" type="datetime-local" id="orderDateTime" class="form-control"
+          [ngClass]="{'is-invalid': isInvalid('orderDateTime')}" />
+        <label for="orderDateTime">Delivery/Pickup Date and Time *</label>
+        <div class="invalid-feedback">Date and time is required.</div>
       </div>
-      <!-- TODO : shuffle the UI around so that this input is longer -->
       <div class="mb-3 form-floating">
-        <input formControlName="deliveryLocation" type="text" id="deliveryLocation" class="form-control" autocomplete="disabled" />
+        <input formControlName="deliveryLocation" type="text" id="deliveryLocation" class="form-control" />
         <label for="deliveryLocation">Delivery/Pickup Location</label>
-        <!-- TODO : add google maps location autocomplete
-           https://developers.google.com/maps/documentation/javascript/place-autocomplete
-        -->
       </div>
     </div>
 
     <div class="col-md-3">
       <div class="mb-3 form-floating">
-        <input formControlName="custName" type="text" id="custName" class="form-control" autocomplete="disabled" [ngClass]="{'is-invalid': isInvalid('custName')}" required />
-
-        <label for="custName">Customer Name</label>
+        <input formControlName="custName" type="text" id="custName" class="form-control"
+          [ngClass]="{'is-invalid': isInvalid('custName')}" />
+        <label for="custName">Customer Name *</label>
+        <div class="invalid-feedback">Customer name is required.</div>
       </div>
       <div class="mb-3 form-floating">
-        <input formControlName="custEmail" type="email" id="custEmail" class="form-control" autocomplete="disabled" />
+        <input formControlName="custEmail" type="email" id="custEmail" class="form-control" />
         <label for="custEmail">Customer Email</label>
       </div>
       <div class="mb-3 form-floating">
-        <input formControlName="custPhone" type="tel" maxlength="12" (input)="onTelInput($event, 'custPhone')" id="custPhone" class="form-control" autocomplete="disabled" [ngClass]="{'is-invalid': isInvalid('custPhone')}" required />
-        <label for="custPhone">Customer Phone Number</label>
-      </div>
-      <div class="mb-3 ">
-        <label for="formFiles" class="form-label">File/image attachments:</label>
-        <input formControlName="formFiles" type="file" id="formFiles" multiple class="form-control" autocomplete="disabled">
+        <input formControlName="custPhone" type="tel" maxlength="12" (input)="onTelInput($event, 'custPhone')"
+          id="custPhone" class="form-control" [ngClass]="{'is-invalid': isInvalid('custPhone')}" />
+        <label for="custPhone">Customer Phone Number *</label>
+        <div class="invalid-feedback">Phone number is required.</div>
       </div>
     </div>
 
-    <!-- TODO: Add TinyMCE editor https://github.com/tinymce/tinymce-angular -->
     <div class="col-md-6 d-flex flex-column h-100">
       <div class="mb-3 form-floating flex-grow-1">
-        <textarea formControlName="details" type="text" id="details" rows="1" class="form-control h-100" autocomplete="disabled"></textarea>
+        <textarea formControlName="details" id="details" rows="1" class="form-control h-100"></textarea>
         <label for="details">Details</label>
       </div>
     </div>
   </div>
 
-  <div class="row">
+  <div class="row align-items-center">
     <div class="col-md-1">
       <div class="form-check">
-        <!--TODO: Angular for checkboxes-->
-        <input class="form-check-input" type="radio" name="flexRadioDefault" id="flexRadioDefault1" autocomplete="disabled" />
-        <label class="form-check-label" for="flexRadioDefault1">Pickup</label>
+        <input class="form-check-input" type="radio" formControlName="pickupOrDelivery" [value]="false" id="radioPickup" />
+        <label class="form-check-label" for="radioPickup">Pickup</label>
       </div>
     </div>
-    <div class="col-md-2">
-      <div class="form-check ">
-        <input class="form-check-input" type="radio" name="flexRadioDefault" id="flexRadioDefault2" autocomplete="disabled" />
-        <label class="form-check-label" for="flexRadioDefault2">Delivery</label>
+    <div class="col-md-1">
+      <div class="form-check">
+        <input class="form-check-input" type="radio" formControlName="pickupOrDelivery" [value]="true" id="radioDelivery" />
+        <label class="form-check-label" for="radioDelivery">Delivery</label>
       </div>
     </div>
     <div class="col-md-3">
       <div class="mb-3 form-floating">
-        <input type="text" formControlName="secondaryName" id="secondaryName" class="form-control" autocomplete="disabled" />
+        <input type="text" formControlName="secondaryName" id="secondaryName" class="form-control" />
         <label for="secondaryName">Day-of/Secondary Contact Name</label>
       </div>
     </div>
     <div class="col-md-3">
       <div class="mb-3 form-floating">
-        <input formControlName="secondaryPhone" type="tel" maxlength="12" (input)="onTelInput($event, 'secondaryPhone')" id="secondaryPhone" class="form-control" autocomplete="disabled" />
+        <input formControlName="secondaryPhone" type="tel" maxlength="12"
+          (input)="onTelInput($event, 'secondaryPhone')" id="secondaryPhone" class="form-control" />
         <label for="secondaryPhone">Day-of/Secondary Contact Phone</label>
       </div>
     </div>
     <div class="col-md-3">
       <div class="mb-3 form-floating">
-        <input type="text" formControlName="initialContact" id="initialContact" class="form-control" autocomplete="disabled" />
+        <input type="text" formControlName="initialContact" id="initialContact" class="form-control" />
         <label for="initialContact">Initial Contact Method</label>
       </div>
     </div>
@@ -127,281 +128,357 @@
     </div>
   </div>
 
-  <!-- cake info fields -->
-  <div id="cakeDetailsHeader" *ngIf="isCakeDetailsHeaderShown">
+  <!-- cake info -->
+  @if (isCakeDetailsHeaderShown) {
     <hr />
     <h5>Cake Details</h5>
-  </div>
-  <div formArrayName="cakeTierInfo" *ngFor="let product of getControls('cakeTierInfo'); let i = index">
-    <div class="row " [formGroupName]="i">
-      <div class="col-md-1 mb-3 btn-group-sm d-flex align-items-center" role="group">
-        <button type="button" class="btn btn-outline-success" (click)="addRow('cakeTierInfo', getBlankCakeFormControls())"><b>+</b></button>
-        <button type="button" class="btn btn-outline-danger" (click)="deleteRow('cakeTierInfo', i)"><b>-</b></button>
-      </div>
-      <div class="col-md-2">
-        <div class="mb-3 form-floating">
-          <select formControlName="tierSize" [id]="'tierSize' + i" class="form-select form-select-md mb-3" aria-label="Cake Tier" [ngClass]="{'is-invalid': isInvalid('tierSize' + i)}" required>
-            <option value=""></option>
-            <option value="cakeMicro">Micro</option>
-            <option value="cakeSixInch">6 inch</option>
-            <option value="cakeEightInch">8 inch</option>
-            <option value="cakeTenInch">10 inch</option>
-            <option value="cakeTwelveInch">12 inch</option>
-            <option value="cakeQuarterSheet">Quarter Sheet</option>
-            <option value="cakeHalfSheet">Half Sheet</option>
-          </select>
-          <label [for]="'tierSize' + i">Tier Size</label>
+  }
+  <ng-container formArrayName="cakeTierInfo">
+    @for (product of getControls('cakeTierInfo'); track product; let i = $index) {
+      <div class="row" [formGroupName]="i">
+        <div class="col-md-1 mb-3 btn-group-sm d-flex align-items-center" role="group">
+          <button type="button" class="btn btn-outline-success" (click)="addRow('cakeTierInfo', getBlankCakeFormControls())"><b>+</b></button>
+          <button type="button" class="btn btn-outline-danger" (click)="deleteRow('cakeTierInfo', i)"><b>-</b></button>
+        </div>
+        <div class="col-md-2">
+          <div class="mb-3 form-floating">
+            <select formControlName="tierSize" [id]="'tierSize' + i" class="form-select"
+              [ngClass]="{'is-invalid': isInvalid('tierSize')}">
+              <option value=""></option>
+              @for (v of cakeTierSizes; track v) { <option [value]="v">{{ v }}</option> }
+            </select>
+            <label [for]="'tierSize' + i">Tier Size *</label>
+            <div class="invalid-feedback">Required.</div>
+          </div>
+        </div>
+        <div class="col-md-1">
+          <div class="mb-3 form-floating">
+            <input formControlName="numTierLayers" type="number" [id]="'numTierLayers' + i" class="form-control"
+              [ngClass]="{'is-invalid': isInvalid('numTierLayers')}" />
+            <label [for]="'numTierLayers' + i"># Layers *</label>
+            <div class="invalid-feedback">Required.</div>
+          </div>
+        </div>
+        <div class="col-md-1">
+          <div class="mb-3 form-floating">
+            <select formControlName="cakeShape" [id]="'cakeShape' + i" class="form-select"
+              [ngClass]="{'is-invalid': isInvalid('cakeShape')}">
+              <option value=""></option>
+              @for (v of cakeShapes; track v) { <option [value]="v">{{ v }}</option> }
+            </select>
+            <label [for]="'cakeShape' + i">Shape *</label>
+            <div class="invalid-feedback">Required.</div>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <div class="mb-3 form-floating">
+            <input formControlName="cakeFlavor" type="text" [id]="'cakeFlavor' + i" class="form-control"
+              list="flavorsList" [ngClass]="{'is-invalid': isInvalid('cakeFlavor')}" />
+            <label [for]="'cakeFlavor' + i">Cake Flavor *</label>
+            <div class="invalid-feedback">Required.</div>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <div class="mb-3 form-floating">
+            <input formControlName="fillingFlavor" type="text" [id]="'fillingFlavor' + i" class="form-control"
+              list="fillingFlavorsList" [ngClass]="{'is-invalid': isInvalid('fillingFlavor')}" />
+            <label [for]="'fillingFlavor' + i">Filling Flavor *</label>
+            <div class="invalid-feedback">Required.</div>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <div class="mb-3 form-floating">
+            <input formControlName="icingFlavor" type="text" [id]="'icingFlavor' + i" class="form-control"
+              list="icingFlavorsList" [ngClass]="{'is-invalid': isInvalid('icingFlavor')}" />
+            <label [for]="'icingFlavor' + i">Icing Flavor *</label>
+            <div class="invalid-feedback">Required.</div>
+          </div>
+        </div>
+        <div class="col-md-1 form-check form-switch mb-3 d-flex align-items-center">
+          <input formControlName="splitTier" class="form-check-input" type="checkbox" role="switch" [id]="'splitTierSwitch' + i">
+          <label class="form-check-label" [for]="'splitTierSwitch' + i">Half?</label>
         </div>
       </div>
-      <div class="col-md-1">
-        <div class="mb-3 form-floating">
-          <input formControlName="numTierLayers" type="text" [id]="'numTierLayers' + i" class="form-control" autocomplete="disabled" [ngClass]="{'is-invalid': isInvalid('numTierLayers' + i)}" required />
-          <label [for]="'numTierLayers' + i">#Layers</label>
-        </div>
-      </div>
-      <div class="col-md-1">
-        <div class="mb-3 form-floating">
-          <select formControlName="cakeShape" [id]="'cakeShape' + i" class="form-select form-select-md mb-3" aria-label="Shape" [ngClass]="{'is-invalid': isInvalid('cakeShape' + i)}" required>
-            <option value="shapeRound">Round</option>
-            <option value="shapeHeart">Heart</option>
-            <option value="shapeSquare">Square</option>
-          </select>
-          <label [for]="'cakeShape' + i">Shape</label>
-        </div>
-      </div>
-      <div class="col-md-2">
-        <div class="mb-3 form-floating">
-          <input formControlName="cakeFlavor" type="text" [id]="'cakeFlavor' + i" class="form-control" autocomplete="disabled" [ngClass]="{'is-invalid': isInvalid('cakeFlavor')}" required />
-          <label for="cakeFlavor">Cake Flavor</label>
-        </div>
-      </div>
-      <div class="col-md-2">
-        <div class="mb-3 form-floating">
-          <input formControlName="fillingFlavor" type="text" [id]="'fillingFlavor' + i" class="form-control" autocomplete="disabled" [ngClass]="{'is-invalid': isInvalid('fillingFlavor')}" required />
-          <label for="fillingFlavor">Filling Flavor</label>
-        </div>
-      </div>
-      <div class="col-md-2">
-        <div class="mb-3 form-floating">
-          <input formControlName="icingFlavor" type="text" [id]="'icingFlavor' + i" class="form-control" autocomplete="disabled" [ngClass]="{'is-invalid': isInvalid('icingFlavor')}" required />
-          <label for="icingFlavor">Icing Flavor</label>
-        </div>
-      </div>
-      <div class="col-md-1 form-check form-switch mb-3 d-flex align-items-center">
-        <input formControlName="splitTier" class="form-check-input" type="checkbox" role="switch" id="splitTierSwitch">
-        <label class="form-check-label" for="splitTierSwitch">Half?</label>
-      </div>
-    </div>
-  </div>
-  <label for="cakeTierInfo" hidden>Cake Details</label>
+    }
+  </ng-container>
 
-  <!--cupcake info fields-->
-  <div id="cupcakeDetailsHeader" *ngIf="isCupcakeDetailsHeaderShown">
+  <!-- cupcake info -->
+  @if (isCupcakeDetailsHeaderShown) {
     <hr />
     <h5>Cupcake Details</h5>
-  </div>
-  <div formArrayName="cupcakeInfo" *ngFor="let product of getControls('cupcakeInfo'); let i = index">
-    <div class="row" [formGroupName]="i">
-      <div class="col-md-1 mb-3 btn-group-sm d-flex align-items-center" role="group">
-        <button type="button" class="btn btn-outline-success" (click)="addRow('cupcakeInfo', getBlankCupcakeFormControls())">+</button>
-        <button type="button" class="btn btn-outline-danger" (click)="deleteRow('cupcakeInfo', i)">-</button>
-      </div>
-      <div class="col-md-2">
-        <div class="mb-3 form-floating">
-          <select formControlName="cupcakeSize" [id]="'cupcakeSize' + i" class="form-select form-select-md mb-3" aria-label="Cupcake Type" required>
-            <option value="cupcakeRegular">Regular</option>
-            <option value="cupcakeMini">Mini</option>
-          </select>
-          <label for="cupcakeSize">Cupcake Size</label>
+  }
+  <ng-container formArrayName="cupcakeInfo">
+    @for (product of getControls('cupcakeInfo'); track product; let i = $index) {
+      <div class="row" [formGroupName]="i">
+        <div class="col-md-1 mb-3 btn-group-sm d-flex align-items-center" role="group">
+          <button type="button" class="btn btn-outline-success" (click)="addRow('cupcakeInfo', getBlankCupcakeFormControls())">+</button>
+          <button type="button" class="btn btn-outline-danger" (click)="deleteRow('cupcakeInfo', i)">-</button>
+        </div>
+        <!-- Signature name (optional — shown if set or when row has a value) -->
+        <div class="col-md-2">
+          <div class="mb-3 form-floating">
+            <input formControlName="signatureName" type="text" [id]="'signatureName' + i" class="form-control"
+              list="signaturesList" placeholder="Optional"
+              (input)="onSignatureSelected($event, i)" />
+            <label [for]="'signatureName' + i">Signature (optional)</label>
+          </div>
+        </div>
+        <div class="col-md-1">
+          <div class="mb-3 form-floating">
+            <select formControlName="cupcakeSize" [id]="'cupcakeSize' + i" class="form-select"
+              [ngClass]="{'is-invalid': isInvalid('cupcakeSize')}">
+              <option value=""></option>
+              @for (v of cupcakeSizes; track v) { <option [value]="v">{{ v }}</option> }
+            </select>
+            <label [for]="'cupcakeSize' + i">Size *</label>
+            <div class="invalid-feedback">Required.</div>
+          </div>
+        </div>
+        <div class="col-md-1">
+          <div class="mb-3 form-floating">
+            <input formControlName="cupcakeQuantity" type="number" [id]="'cupcakeQuantity' + i" class="form-control"
+              [ngClass]="{'is-invalid': isInvalid('cupcakeQuantity')}" />
+            <label [for]="'cupcakeQuantity' + i">Qty *</label>
+            <div class="invalid-feedback">Required.</div>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <div class="mb-3 form-floating">
+            <input formControlName="cupcakeFlavor" type="text" [id]="'cupcakeFlavor' + i" class="form-control"
+              list="flavorsList" [ngClass]="{'is-invalid': isInvalid('cupcakeFlavor')}" />
+            <label [for]="'cupcakeFlavor' + i">Flavor *</label>
+            <div class="invalid-feedback">Required.</div>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <div class="mb-3 form-floating">
+            <input formControlName="fillingFlavor" type="text" [id]="'cupcakeFillingFlavor' + i" class="form-control"
+              list="fillingFlavorsList" [ngClass]="{'is-invalid': isInvalid('fillingFlavor')}" />
+            <label [for]="'cupcakeFillingFlavor' + i">Filling *</label>
+            <div class="invalid-feedback">Required.</div>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <div class="mb-3 form-floating">
+            <input formControlName="icingFlavor" type="text" [id]="'cupcakeIcingFlavor' + i" class="form-control"
+              list="icingFlavorsList" [ngClass]="{'is-invalid': isInvalid('icingFlavor')}" />
+            <label [for]="'cupcakeIcingFlavor' + i">Icing *</label>
+            <div class="invalid-feedback">Required.</div>
+          </div>
         </div>
       </div>
-      <div class="col-md-2">
-        <div class="mb-3 form-floating">
-          <input formControlName="cupcakeQuantity" type="text" [id]="'cupcakeQuantity' + i" class="form-control" autocomplete="disabled" required />
-          <label for="cupcakeQuantity">Quantity</label>
-        </div>
-      </div>
-      <div class="col-md-2">
-        <div class="mb-3 form-floating">
-          <input formControlName="cupcakeFlavor" type="text" [id]="'cupcakeFlavor' + i" class="form-control" autocomplete="disabled" required />
-          <label for="cupcakeFlavor">Cupcake Flavor</label>
-        </div>
-      </div>
-      <div class="col-md-2">
-        <div class="mb-3 form-floating">
-          <input formControlName="fillingFlavor" type="text" [id]="'fillingFlavor' + i" class="form-control" autocomplete="disabled" required />
-          <label for="fillingFlavor">Filling Flavor</label>
-        </div>
-      </div>
-      <div class="col-md-2">
-        <div class="mb-3 form-floating">
-          <input formControlName="icingFlavor" type="text" [id]="'icingFlavor' + i" class="form-control" autocomplete="disabled" required />
-          <label for="icingFlavor">Icing Flavor</label>
-        </div>
-      </div>
-    </div>
-  </div>
+    }
+  </ng-container>
 
-  <!--pupcake info fields-->
-  <div id="pupcakeDetailsHeader" *ngIf="isPupcakeDetailsHeaderShown">
+  <!-- pupcake info -->
+  @if (isPupcakeDetailsHeaderShown) {
     <hr />
     <h5>Pupcake Details</h5>
-  </div>
-  <div formArrayName="pupcakeInfo" *ngFor="let product of getControls('pupcakeInfo'); let i = index">
-    <div class="row" [formGroupName]="i">
-      <div class="col-md-1 mb-3 btn-group-sm d-flex align-items-center" role="group">
-        <button type="button" class="btn btn-outline-success" (click)="addRow('pupcakeInfo', getBlankPupcakeFormControls())">+</button>
-        <button type="button" class="btn btn-outline-danger" (click)="deleteRow('pupcakeInfo', i)">-</button>
-      </div>
-      <div class="col-md-2">
-        <div class="mb-3 form-floating">
-          <select formControlName="pupcakeSize" [id]="'pupcakeSize' + i" class="form-select form-select-md mb-3" aria-label="Order Type" required>
-            <option value="pupcakeRegular">Regular</option>
-            <option value="pupcakeMini">Mini</option>
-            <option value="pupcakeCake">Cake</option>
-          </select>
-          <label for="pupcakeSize">Pupcake Size</label>
+  }
+  <ng-container formArrayName="pupcakeInfo">
+    @for (product of getControls('pupcakeInfo'); track product; let i = $index) {
+      <div class="row" [formGroupName]="i">
+        <div class="col-md-1 mb-3 btn-group-sm d-flex align-items-center" role="group">
+          <button type="button" class="btn btn-outline-success" (click)="addRow('pupcakeInfo', getBlankPupcakeFormControls())">+</button>
+          <button type="button" class="btn btn-outline-danger" (click)="deleteRow('pupcakeInfo', i)">-</button>
+        </div>
+        <div class="col-md-2">
+          <div class="mb-3 form-floating">
+            <select formControlName="pupcakeSize" [id]="'pupcakeSize' + i" class="form-select"
+              [ngClass]="{'is-invalid': isInvalid('pupcakeSize')}">
+              <option value="Regular">Regular</option>
+              <option value="Mini">Mini</option>
+              <option value="Cake">Cake</option>
+            </select>
+            <label [for]="'pupcakeSize' + i">Pupcake Size *</label>
+            <div class="invalid-feedback">Required.</div>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <div class="mb-3 form-floating">
+            <input formControlName="pupcakeQuantity" type="number" [id]="'pupcakeQuantity' + i" class="form-control"
+              [ngClass]="{'is-invalid': isInvalid('pupcakeQuantity')}" />
+            <label [for]="'pupcakeQuantity' + i">Quantity *</label>
+            <div class="invalid-feedback">Required.</div>
+          </div>
         </div>
       </div>
-      <div class="col-md-2">
-        <div class="mb-3 form-floating">
-          <input formControlName="pupcakeQuantity" type="text" [id]="'pupcakeQuantity' + i" class="form-control" autocomplete="disabled" required />
-          <label for="pupcakeQuantity">Quantity</label>
-        </div>
-      </div>
-    </div>
-  </div>
+    }
+  </ng-container>
 
-  <!--cookie info fields-->
-  <div id="cookieDetailsHeader" *ngIf="isCookieDetailsHeaderShown">
+  <!-- cookie info -->
+  @if (isCookieDetailsHeaderShown) {
     <hr />
     <h5>Cookie Details</h5>
-  </div>
-  <div class="row" formArrayName="cookieInfo" *ngFor="let product of getControls('cookieInfo'); let i = index">
-    <div class="row" [formGroupName]="i">
-      <div class="col-md-1 mb-3 btn-group-sm d-flex align-items-center" role="group">
-        <button type="button" class="btn btn-outline-success" (click)="addRow('cookieInfo', getBlankCookieFormControls())">+</button>
-        <button type="button" class="btn btn-outline-danger" (click)="deleteRow('cookieInfo', i)">-</button>
-      </div>
-      <div class="col-md-2">
-        <div class="mb-3 form-floating">
-          <select formControlName="cookieType" [id]="'cookieType' + i" class="form-select form-select-md mb-3" aria-label="Cookie Type" required>
-            <option value=""></option>
-            <option value="cookieChocChip">Chocolate Chip</option>
-            <option value="cookieMM">M&M</option>
-            <option value="cookiePeanutButter">Peanut Butter</option>
-            <option value="cookieOatmealRaisin">Oatmeal Raisin</option>
-            <option value="cookieGingerbread">Gingerbread</option>
-            <option value="cookiePumpkin">Pumpkin</option>
-            <option value="cookieSugarCookie">Sugar Cookie</option>
-          </select>
-          <label for="cookieType">Cookie Type</label>
+  }
+  <ng-container formArrayName="cookieInfo">
+    @for (product of getControls('cookieInfo'); track product; let i = $index) {
+      <div class="row" [formGroupName]="i">
+        <div class="col-md-1 mb-3 btn-group-sm d-flex align-items-center" role="group">
+          <button type="button" class="btn btn-outline-success" (click)="addRow('cookieInfo', getBlankCookieFormControls())">+</button>
+          <button type="button" class="btn btn-outline-danger" (click)="deleteRow('cookieInfo', i)">-</button>
+        </div>
+        <div class="col-md-2">
+          <div class="mb-3 form-floating">
+            <select formControlName="cookieType" [id]="'cookieType' + i" class="form-select"
+              [ngClass]="{'is-invalid': isInvalid('cookieType')}">
+              <option value=""></option>
+              @for (v of cookieTypes; track v) { <option [value]="v">{{ v }}</option> }
+            </select>
+            <label [for]="'cookieType' + i">Cookie Type *</label>
+            <div class="invalid-feedback">Required.</div>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <div class="mb-3 form-floating">
+            <input formControlName="cookieQuantity" type="number" [id]="'cookieQuantity' + i" class="form-control"
+              [ngClass]="{'is-invalid': isInvalid('cookieQuantity')}" />
+            <label [for]="'cookieQuantity' + i">Quantity *</label>
+            <div class="invalid-feedback">Required.</div>
+          </div>
         </div>
       </div>
-      <div class="col-md-2">
-        <div class="mb-3 form-floating">
-          <input formControlName="cookieQuantity" type="text" [id]="'cookieQuantity' + i" class="form-control" autocomplete="disabled" required />
-          <label for="cookieQuantity">Quantity</label>
-        </div>
-      </div>
-    </div>
-  </div>
+    }
+  </ng-container>
 
-  <!-- price fields -->
+  <!-- pricing -->
   <hr />
   <h5>Pricing and Deposit Information</h5>
   <div class="row">
     <div class="col-md-3">
       <div class="mb-3 form-floating">
-        <input formControlName="totalCost" type="hidden" id="totalCost" class="form-control" autocomplete="disabled" />
-        <input type="text" id="totalCostFormatted" class="form-control" [value]="editOrderFormGroup.controls['totalCost'].value | currency" (blur)="onTotalCostInput($event, 'totalCost')" />
+        <input formControlName="totalCost" type="hidden" id="totalCost" class="form-control" />
+        <input type="text" id="totalCostFormatted" class="form-control"
+          [value]="editOrderFormGroup.controls['totalCost'].value | currency"
+          (blur)="onTotalCostInput($event, 'totalCost')" />
         <label for="totalCostFormatted">Total Cost</label>
       </div>
       <div class="mb-3 form-floating">
-        <input formControlName="depositAmount" type="hidden" id="depositAmount" class="form-control" autocomplete="disabled" />
-        <input type="text" id="depositAmountFormatted" class="form-control" [value]="editOrderFormGroup.controls['depositAmount'].value | currency" (blur)="onTotalCostInput($event, 'depositAmount')" />
+        <input formControlName="depositAmount" type="hidden" id="depositAmount" class="form-control" />
+        <input type="text" id="depositAmountFormatted" class="form-control"
+          [value]="editOrderFormGroup.controls['depositAmount'].value | currency"
+          (blur)="onTotalCostInput($event, 'depositAmount')" />
         <label for="depositAmountFormatted">Deposit Amount</label>
       </div>
     </div>
     <div class="col-md-3">
       <div class="mb-3 form-floating">
-        <input formControlName="depositPaymentMethod" type="text" id="depositPaymentMethod" class="form-control" autocomplete="disabled" />
+        <input formControlName="depositPaymentMethod" type="text" id="depositPaymentMethod" class="form-control" />
         <label for="depositPaymentMethod">Deposit Payment Method</label>
       </div>
       <div class="mb-3 form-floating">
-        <input formControlName="depositDateTime" type="datetime-local" data-provide="datepicker" id="depositDateTime" class="form-control" autocomplete="disabled" />
+        <input formControlName="depositDateTime" type="datetime-local" id="depositDateTime" class="form-control" />
         <label for="depositDateTime">Deposit Date/Time</label>
       </div>
     </div>
     <div class="col-md-3">
       <div class="mb-3 form-floating">
-        <input formControlName="finalPaymentMethod" type="text" id="finalPaymentMethod" class="form-control" autocomplete="disabled" />
+        <input formControlName="finalPaymentMethod" type="text" id="finalPaymentMethod" class="form-control" />
         <label for="finalPaymentMethod">Final Payment Method</label>
       </div>
       <div class="mb-3 form-floating">
-        <input formControlName="finalPaymentDateTime" type="datetime-local" data-provide="datepicker" id="finalPaymentDateTime" class="form-control" autocomplete="disabled" />
+        <input formControlName="finalPaymentDateTime" type="datetime-local" id="finalPaymentDateTime" class="form-control" />
         <label for="finalPaymentDateTime">Final Payment Date/Time</label>
       </div>
     </div>
     <div class="col-md-3">
       <div class="mb-3 form-floating">
-        <input formControlName="dateOrderPlaced" type="date" data-provide="datepicker" id="dateOrderPlaced" class="form-control" autocomplete="disabled" />
+        <input formControlName="dateOrderPlaced" type="date" id="dateOrderPlaced" class="form-control" />
         <label for="dateOrderPlaced">Date Order Placed</label>
       </div>
-      <div class="mb-3 form-floating">
-        <div class="form-check form-switch d-flex justify-content-center">
+      <div class="mb-3">
+        <div class="form-check form-switch">
           <input formControlName="paidInFull" class="form-check-input" type="checkbox" role="switch" id="paidInFullSwitch">
-          <label class="form-check-label" for="paidInFullSwitch"> Paid in Full</label>
+          <label class="form-check-label" for="paidInFullSwitch">Paid in Full</label>
         </div>
       </div>
     </div>
   </div>
 
-  <!--svg toast icons, probably not the best spot but eh-->
+  <!-- attachments (only shown when editing an existing order) -->
+  @if (createOrUpdate === 'Update') {
+    <hr />
+    <h5>Attachments</h5>
+    <div class="mb-3">
+      <label class="btn btn-outline-secondary" for="fileInput">
+        + Add Files
+        <input type="file" id="fileInput" class="d-none" multiple accept="image/*,.pdf"
+          (change)="onFileSelected($event)" />
+      </label>
+    </div>
+    <div class="d-flex flex-wrap gap-3 mb-3">
+      @for (attachment of attachments; track attachment.id) {
+        <div class="card" style="width: 150px;">
+          @if (attachment.contentType.startsWith('image/')) {
+            <img [src]="attachmentService.GetFileUrl(attachment.id)"
+              class="card-img-top" style="height: 100px; object-fit: cover;"
+              [alt]="attachment.fileName" />
+          } @else {
+            <div class="d-flex align-items-center justify-content-center bg-light"
+              style="height: 100px; font-size: 2.5rem;">
+              &#x1F4C4;
+            </div>
+          }
+          <div class="card-body p-2">
+            <p class="card-text small text-truncate mb-1" [title]="attachment.fileName">
+              {{ attachment.fileName }}
+            </p>
+            <div class="d-flex gap-1">
+              <a [href]="attachmentService.GetFileUrl(attachment.id)" target="_blank"
+                class="btn btn-sm btn-outline-primary flex-grow-1">View</a>
+              <button type="button" class="btn btn-sm btn-outline-danger"
+                (click)="deleteAttachment(attachment.id)">&times;</button>
+            </div>
+          </div>
+        </div>
+      } @empty {
+        <p class="text-muted">No attachments yet.</p>
+      }
+    </div>
+  }
+
+  <!-- toast icons (hidden svg sprite) -->
   <svg xmlns="http://www.w3.org/2000/svg" class="d-none">
     <symbol id="check-circle-fill" viewBox="0 0 16 16">
       <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z" />
-    </symbol>
-    <symbol id="info-fill" viewBox="0 0 16 16">
-      <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z" />
     </symbol>
     <symbol id="exclamation-triangle-fill" viewBox="0 0 16 16">
       <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z" />
     </symbol>
   </svg>
 
-  <!--success/failure toasts-->
+  <!-- toasts -->
   <div class="toast-container position-fixed bottom-0 end-0 p-3">
     <div id="toastSuccess" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
       <div class="toast-header">
-        <strong class="me-auto">
-          <svg class="bi flex-shrink-0 me-2" role="img" aria-label="Success:" style="width: 1em; height: 1em;"><use xlink:href="#check-circle-fill" /></svg>
-        </strong>
-        <small>Order saved!</small>
+        <svg class="bi flex-shrink-0 me-2" role="img" aria-label="Success:" style="width:1em;height:1em;"><use xlink:href="#check-circle-fill" /></svg>
+        <strong class="me-auto">Success</strong>
         <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
       </div>
-      <div class="toast-body">
-        Order saved!
-      </div>
+      <div class="toast-body"></div>
     </div>
-
     <div id="toastFailure" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-      <div class="toast-header">
-        <strong class="me-auto">
-          <svg class="bi flex-shrink-0 me-2" role="img" aria-label="Error:" style="width: 1em; height: 1em;"><use xlink:href="#exclamation-triangle-fill" /></svg>
-        </strong>
-        <small>Order failed to save.</small>
+      <div class="toast-header text-bg-danger">
+        <svg class="bi flex-shrink-0 me-2" role="img" aria-label="Error:" style="width:1em;height:1em;"><use xlink:href="#exclamation-triangle-fill" /></svg>
+        <strong class="me-auto">Error</strong>
         <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
       </div>
-      <div class="toast-body">
-      </div>
+      <div class="toast-body"></div>
     </div>
   </div>
 
-  <button (click)="onUpdateOrderClicked()" *ngIf="createOrUpdate === 'Update'" type="submit" class="btn btn-lg btn-outline-success">Update order</button>
-  <button (click)="onDeleteOrderClicked()" *ngIf="createOrUpdate === 'Update'" type="submit" class="btn btn-lg btn-outline-danger">Delete order</button>
-  <button (click)="onCreateOrderClicked()" *ngIf="createOrUpdate === 'Create'" type="submit" class="btn btn-lg btn-outline-success">Create order</button>
+  <!-- action buttons -->
+  <div class="d-flex gap-2 mt-3 mb-5">
+    @if (createOrUpdate === 'Update') {
+      <button (click)="onUpdateOrderClicked()" type="submit" class="btn btn-lg btn-outline-success">Update order</button>
+      @if (orderToEdit.deleteFlag) {
+        <button type="button" class="btn btn-lg btn-outline-success" (click)="restoreOrder()">Restore order</button>
+      } @else {
+        <button (click)="onDeleteOrderClicked()" type="submit" class="btn btn-lg btn-outline-danger">Delete order</button>
+      }
+    }
+    @if (createOrUpdate === 'Create') {
+      <button (click)="onCreateOrderClicked()" type="submit" class="btn btn-lg btn-outline-success">Create order</button>
+    }
+  </div>
 </form>
-
-<!-- blank footer -->
-<br /><br /><br /><br /><br /><br />

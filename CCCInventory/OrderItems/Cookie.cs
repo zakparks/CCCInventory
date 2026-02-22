@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace CCCInventory
 {
@@ -6,7 +6,7 @@ namespace CCCInventory
     {
         [Key]
         public int Id { get; set; }
-        public string CookieType { get; set; }
+        public string CookieType { get; set; } = null!;
         public int CookieQuantity { get; set; }
     }
 }

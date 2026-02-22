@@ -1,0 +1,56 @@
+<div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+  <h2 class="mb-0">{{ viewLabel }}</h2>
+  <div class="btn-group">
+    <button type="button" class="btn btn-outline-secondary" (click)="prevPeriod()">&#8249;</button>
+    <button type="button" class="btn btn-outline-secondary btn-sm px-3" (click)="goToToday()">Today</button>
+    <button type="button" class="btn btn-outline-secondary" (click)="nextPeriod()">&#8250;</button>
+  </div>
+  <div class="btn-group btn-group-sm">
+    <button type="button" class="btn"
+            [class.btn-primary]="viewMode === 'month'"
+            [class.btn-outline-secondary]="viewMode !== 'month'"
+            (click)="setViewMode('month')">Month</button>
+    <button type="button" class="btn"
+            [class.btn-primary]="viewMode === 'week'"
+            [class.btn-outline-secondary]="viewMode !== 'week'"
+            (click)="setViewMode('week')">Week</button>
+  </div>
+  <div class="d-flex gap-3 small ms-auto">
+    <span class="d-flex align-items-center gap-1">
+      <span style="display:inline-block;width:12px;height:12px;background:#0d6efd;border-radius:2px;"></span> Pickup
+    </span>
+    <span class="d-flex align-items-center gap-1">
+      <span style="display:inline-block;width:12px;height:12px;background:#198754;border-radius:2px;"></span> Delivery
+    </span>
+  </div>
+</div>
+
+<div class="calendar-grid rounded border overflow-hidden">
+  @if (viewMode === 'month') {
+    @for (day of weekdays; track day) {
+      <div class="calendar-weekday">{{ day }}</div>
+    }
+  } @else {
+    @for (day of calendarDays; track day.date) {
+      <div class="calendar-weekday" [class.today-header]="day.isToday">
+        {{ weekdays[day.date.getDay()] }} {{ day.date.getDate() }}
+      </div>
+    }
+  }
+  @for (day of calendarDays; track day.date) {
+    <div class="calendar-day"
+         [class.week-view-day]="viewMode === 'week'"
+         [class.other-month]="!day.isCurrentMonth && viewMode === 'month'"
+         [class.today]="day.isToday">
+      @if (viewMode === 'month') {
+        <div class="day-number">{{ day.date.getDate() }}</div>
+      }
+      @for (order of day.orders; track order.orderNumber) {
+        <span class="order-pill" [class.order-delivery]="order.pickupOrDelivery === true"
+          (click)="editOrder(order.orderNumber!)" [title]="order.custName + ' \u2014 ' + order.details">
+          #{{ order.orderNumber }} {{ order.custName }}
+        </span>
+      }
+    </div>
+  }
+</div>

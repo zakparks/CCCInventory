@@ -1,4 +1,3 @@
-﻿using System;
 using System.ComponentModel.DataAnnotations;
 
 namespace CCCInventory
@@ -7,12 +6,12 @@ namespace CCCInventory
     {
         [Key]
         public int Id { get; set; }
-        public string TierSize { get; set; }
+        public string TierSize { get; set; } = null!;
         public int NumTierLayers { get; set; }
-        public string CakeShape { get; set; }
-        public string CakeFlavor { get; set; }
-        public string FillingFlavor { get; set; }
-        public string IcingFlavor { get; set; }
+        public string CakeShape { get; set; } = null!;
+        public string CakeFlavor { get; set; } = null!;
+        public string FillingFlavor { get; set; } = null!;
+        public string IcingFlavor { get; set; } = null!;
         public bool SplitTier { get; set; }
     }
 }

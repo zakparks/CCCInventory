@@ -1,11 +1,10 @@
-﻿using CCCInventory.Data;
+using CCCInventory.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
 
 namespace CCCInventory.Controllers
 {
-    // TODO - change the routes after the tutorial to make a little more sense in the URL
     [Route("api/[controller]")]
     [ApiController]
     public class OrderController : ControllerBase
@@ -20,87 +19,134 @@ namespace CCCInventory.Controllers
         [HttpGet]
         public async Task<ActionResult<List<Order>>> GetOrders()
         {
-            return Ok(await _context.Orders.Where(order => !order.DeleteFlag).ToListAsync());
+            return Ok(await _context.Orders
+                .Where(order => !order.DeleteFlag)
+                .Include(o => o.Cakes)
+                .Include(o => o.Cupcakes)
+                .Include(o => o.Cookies)
+                .Include(o => o.Pupcakes)
+                .ToListAsync());
         }
 
         [HttpGet("{orderNumber:int}")]
         public async Task<ActionResult<Order>> GetOrder(int orderNumber)
         {
-            return Ok(await _context.Orders.FirstOrDefaultAsync(order => order.OrderNumber == orderNumber));
+            var order = await _context.Orders
+                .Include(o => o.Cakes)
+                .Include(o => o.Cupcakes)
+                .Include(o => o.Cookies)
+                .Include(o => o.Pupcakes)
+                .FirstOrDefaultAsync(o => o.OrderNumber == orderNumber);
+
+            if (order == null)
+                return NotFound($"Order {orderNumber} not found");
+
+            return Ok(order);
         }
 
         [HttpGet("newOrderNumber")]
         public async Task<ActionResult<int>> GetNewOrderNumber()
         {
-            return Ok(await _context.Orders.MaxAsync(order => order.OrderNumber) + 1);
+            // Cast to nullable int so MaxAsync returns null on an empty table instead of throwing
+            int? max = await _context.Orders.MaxAsync(order => (int?)order.OrderNumber);
+            return Ok((max ?? 0) + 1);
         }
 
         [HttpPost]
-        // returns the orderNumber of the newest order in the database
         public async Task<ActionResult<int>> CreateOrder(Order order)
         {
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
 
             _context.Orders.Add(order);
             await _context.SaveChangesAsync();
-            int latestOrderNumber = await _context.Orders.MaxAsync(order => order.OrderNumber);
 
-            if (order.OrderNumber != latestOrderNumber)
-            {
-                return BadRequest($"Order {order.OrderNumber} not created");
-            }
-
-            return Ok(latestOrderNumber);
+            return Ok(order.OrderNumber);
         }
 
         [HttpPut]
         public async Task<ActionResult<int>> UpdateOrder(Order order)
         {
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
 
-            var dbOrder = await _context.Orders.FindAsync(order.OrderNumber);
+            // Load WITHOUT Include — using Include causes EF to track the existing child entities,
+            // and assigning the incoming collection (which carries the same IDs) produces an
+            // identity-conflict exception from the change tracker.
+            var dbOrder = await _context.Orders
+                .FirstOrDefaultAsync(o => o.OrderNumber == order.OrderNumber);
+
             if (dbOrder == null)
-            {
-                return BadRequest($"Order {order.OrderNumber} not found");
-            }
+                return NotFound($"Order {order.OrderNumber} not found");
 
-            // assign all of the updated properties of the incoming order to the new dbOrder to be saved
-            foreach (PropertyInfo property in typeof(Order).GetProperties().Where(p => p.CanWrite))
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            // Update scalar properties on the tracked Order row
+            foreach (PropertyInfo property in typeof(Order).GetProperties()
+                .Where(p => p.CanWrite && !IsNavigationCollection(p)))
             {
                 property.SetValue(dbOrder, property.GetValue(order, null), null);
             }
 
-            if (await _context.SaveChangesAsync() == 0)
-            {
-                return BadRequest($"Order {order.OrderNumber} not created");
-            }
+            // Delete old child rows directly (bypasses the change tracker — no identity conflict)
+            int oNum = order.OrderNumber;
+            await _context.Cakes    .Where(c => EF.Property<int?>(c, "OrderNumber") == oNum).ExecuteDeleteAsync();
+            await _context.Cupcakes .Where(c => EF.Property<int?>(c, "OrderNumber") == oNum).ExecuteDeleteAsync();
+            await _context.Cookies  .Where(c => EF.Property<int?>(c, "OrderNumber") == oNum).ExecuteDeleteAsync();
+            await _context.Pupcakes .Where(c => EF.Property<int?>(c, "OrderNumber") == oNum).ExecuteDeleteAsync();
+
+            // Assign incoming collections — reset Ids to 0 so EF generates new primary keys
+            dbOrder.Cakes    = order.Cakes?   .Select(c => { c.Id = 0; return c; }).ToList();
+            dbOrder.Cupcakes = order.Cupcakes?.Select(c => { c.Id = 0; return c; }).ToList();
+            dbOrder.Cookies  = order.Cookies? .Select(c => { c.Id = 0; return c; }).ToList();
+            dbOrder.Pupcakes = order.Pupcakes?.Select(c => { c.Id = 0; return c; }).ToList();
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return Ok(order.OrderNumber);
         }
 
-        [HttpDelete("{OrderNumber}")]
-        public async Task<ActionResult<int>> DeleteOrder(int OrderNumber)
+        [HttpGet("deleted")]
+        public async Task<ActionResult<List<Order>>> GetDeletedOrders()
         {
-            var dbOrder = await _context.Orders.FindAsync(OrderNumber);
-            if (dbOrder == null)
-            {
-                return BadRequest($"Order {OrderNumber} not found");
-            }
-
-            _context.Orders.Remove(dbOrder);
-
-            if (await _context.SaveChangesAsync() == 0)
-            { 
-                return BadRequest($"Order {OrderNumber} not marked as deleted");
-            }
-
-            return Ok(OrderNumber);
+            return Ok(await _context.Orders
+                .Where(order => order.DeleteFlag)
+                .Include(o => o.Cakes)
+                .Include(o => o.Cupcakes)
+                .Include(o => o.Cookies)
+                .Include(o => o.Pupcakes)
+                .ToListAsync());
         }
+
+        [HttpPut("{orderNumber:int}/restore")]
+        public async Task<ActionResult<int>> RestoreOrder(int orderNumber)
+        {
+            var dbOrder = await _context.Orders.FindAsync(orderNumber);
+            if (dbOrder == null)
+                return NotFound($"Order {orderNumber} not found");
+
+            dbOrder.DeleteFlag = false;
+            await _context.SaveChangesAsync();
+            return Ok(orderNumber);
+        }
+
+        [HttpDelete("{orderNumber:int}")]
+        public async Task<ActionResult<int>> DeleteOrder(int orderNumber)
+        {
+            var dbOrder = await _context.Orders.FindAsync(orderNumber);
+            if (dbOrder == null)
+                return NotFound($"Order {orderNumber} not found");
+
+            // Hard delete — soft delete is handled via PUT with DeleteFlag = true
+            _context.Orders.Remove(dbOrder);
+            await _context.SaveChangesAsync();
+
+            return Ok(orderNumber);
+        }
+
+        private static bool IsNavigationCollection(PropertyInfo p) =>
+            p.PropertyType.IsGenericType &&
+            p.PropertyType.GetGenericTypeDefinition() == typeof(List<>);
     }
 }

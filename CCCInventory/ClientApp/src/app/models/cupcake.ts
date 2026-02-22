@@ -4,4 +4,5 @@ export class Cupcake {
   cupcakeFlavor: string | undefined;
   fillingFlavor: string | undefined;
   icingFlavor: string | undefined;
+  signatureName: string | undefined;
 }

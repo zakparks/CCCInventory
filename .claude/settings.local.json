@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"m:/OneDrive/software/Programming/Github/CCCInventory\" log --oneline -15)"
+    ]
+  }
+}

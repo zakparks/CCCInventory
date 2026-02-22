@@ -1,0 +1,155 @@
+<div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+  <h2 class="mb-0">Bake Sheet</h2>
+  <div class="btn-group no-print">
+    <button type="button" class="btn btn-outline-secondary" (click)="prevWeek()">&#8249;</button>
+    <button type="button" class="btn btn-outline-secondary btn-sm px-3" (click)="thisWeek()">This Week</button>
+    <button type="button" class="btn btn-outline-secondary" (click)="nextWeek()">&#8250;</button>
+  </div>
+  <span class="text-muted small">{{ weekLabel }}</span>
+  <button type="button" class="btn btn-outline-secondary btn-sm ms-auto no-print" (click)="print()">
+    &#128438; Print
+  </button>
+</div>
+
+@if (loading) {
+  <p class="text-muted">Loading&hellip;</p>
+} @else if (data) {
+
+  <!-- Orders This Week (collapsible) -->
+  <div class="bake-section">
+    <div class="bake-section-header clickable" [class.collapsed]="!ordersExpanded"
+         (click)="ordersExpanded = !ordersExpanded"
+         [title]="ordersExpanded ? 'Collapse' : 'Expand'">
+      <span>Orders This Week ({{ data.orders.length }})</span>
+      <span class="collapse-indicator no-print">@if (ordersExpanded) { &#8743; } @else { &#8744; }</span>
+    </div>
+    @if (ordersExpanded) {
+      <div class="bake-section-body">
+        @if (data.orders.length === 0) {
+          <p class="no-orders">No orders this week.</p>
+        } @else {
+          @for (order of data.orders; track order.orderNumber) {
+            <div class="order-row">
+              <div class="d-flex align-items-baseline gap-2 flex-wrap">
+                <a class="fw-semibold text-decoration-none no-print" style="cursor:pointer"
+                   (click)="editOrder(order.orderNumber!)">
+                  #{{ order.orderNumber }}
+                </a>
+                <span class="fw-semibold d-none d-print-inline">#{{ order.orderNumber }}</span>
+                <span>{{ order.custName }}</span>
+                <span class="text-muted small">{{ formatDate(order.orderDateTime) }}</span>
+                @if (order.pickupOrDelivery) {
+                  <span class="badge bg-success">Delivery</span>
+                } @else {
+                  <span class="badge bg-primary">Pickup</span>
+                }
+                @if (order.deliveryLocation && order.pickupOrDelivery) {
+                  <span class="text-muted small">{{ order.deliveryLocation }}</span>
+                }
+              </div>
+              @for (cake of order.cakes ?? []; track $index) {
+                <div class="item-line">&#127874; {{ cake.numTierLayers }}× {{ cake.tierSize }} {{ cake.cakeShape }} — {{ cake.cakeFlavor }}</div>
+              }
+              @for (cup of order.cupcakes ?? []; track $index) {
+                <div class="item-line">&#127849; {{ cup.cupcakeQuantity }}× {{ cup.cupcakeFlavor }}</div>
+              }
+              @for (cookie of order.cookies ?? []; track $index) {
+                <div class="item-line">&#127850; {{ cookie.cookieQuantity }}× {{ cookie.cookieType }}</div>
+              }
+              @for (pup of order.pupcakes ?? []; track $index) {
+                <div class="item-line">&#128054; {{ pup.pupcakeQuantity }}× {{ pup.pupcakeSize }} pupcake</div>
+              }
+            </div>
+          }
+        }
+      </div>
+    }
+  </div>
+
+  <!-- Cakes -->
+  @if (cakeTotals.length > 0) {
+    <div class="bake-section">
+      <div class="bake-section-header"><span>Cakes</span></div>
+      <div class="bake-section-body">
+        <table class="totals-table">
+          <thead>
+            <tr style="font-size:.8rem;color:#6c757d;text-transform:uppercase;letter-spacing:.04em;">
+              <th class="sortable-th" style="padding:4px 8px;font-weight:600;" (click)="sortCake('flavor')">Flavor <span class="sort-indicator">{{ cakeSortCol === 'flavor' ? (cakeSortDir === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+              <th class="sortable-th" style="padding:4px 8px;font-weight:600;" (click)="sortCake('size')">Size <span class="sort-indicator">{{ cakeSortCol === 'size' ? (cakeSortDir === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+              <th class="sortable-th" style="padding:4px 8px;font-weight:600;" (click)="sortCake('shape')">Shape <span class="sort-indicator">{{ cakeSortCol === 'shape' ? (cakeSortDir === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+              <th class="sortable-th" style="padding:4px 8px;font-weight:600;text-align:right;width:60px;" (click)="sortCake('count')">Qty <span class="sort-indicator">{{ cakeSortCol === 'count' ? (cakeSortDir === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of sortedCakeTotals; track $index) {
+              <tr>
+                <td>{{ row.flavor }}</td>
+                <td>{{ row.size }}</td>
+                <td>{{ row.shape }}</td>
+                <td class="count-col">{{ row.count }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+  <!-- Cupcakes -->
+  @if (cupcakeTotals.length > 0) {
+    <div class="bake-section">
+      <div class="bake-section-header"><span>Cupcakes</span></div>
+      <div class="bake-section-body">
+        <table class="totals-table">
+          <tbody>
+            @for (row of cupcakeTotals; track row.label) {
+              <tr>
+                <td>{{ row.label }}</td>
+                <td class="count-col">{{ row.count }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+  <!-- Cookies -->
+  @if (cookieTotals.length > 0) {
+    <div class="bake-section">
+      <div class="bake-section-header"><span>Cookies</span></div>
+      <div class="bake-section-body">
+        <table class="totals-table">
+          <tbody>
+            @for (row of cookieTotals; track row.label) {
+              <tr>
+                <td>{{ row.label }}</td>
+                <td class="count-col">{{ row.count }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+  <!-- Pupcakes -->
+  @if (pupcakeTotals.length > 0) {
+    <div class="bake-section">
+      <div class="bake-section-header"><span>Pupcakes</span></div>
+      <div class="bake-section-body">
+        <table class="totals-table">
+          <tbody>
+            @for (row of pupcakeTotals; track row.label) {
+              <tr>
+                <td>{{ row.label }}</td>
+                <td class="count-col">{{ row.count }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+}

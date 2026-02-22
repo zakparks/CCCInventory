@@ -1,40 +1,37 @@
 <h1 id="tableLabel">All Orders</h1>
 
-<p *ngIf="!orders$"><em>Loading...</em></p>
+<div class="mb-3 row align-items-center">
+  <label for="table-filtering-search" class="col-sm-auto col-form-label">Search:</label>
+  <div class="col-sm-auto">
+    <input id="table-filtering-search" class="form-control" type="text" [formControl]="filter" placeholder="Name, details, email, order #" />
+  </div>
+</div>
 
-<div *ngIf="orders$">
-  <form>
-    <div class="mb-3 row">
-      <label for="table-filtering-search" class="col-xs-3 col-sm-auto col-form-label">Search all orders:</label>
-      <div class="col-xs-3 col-sm-auto">
-        <input id="table-filtering-search" class="form-control" type="text" [formControl]="filter" />
-      </div>
-    </div>
-  </form>
-
-  <table class='table table-striped' aria-labelledby="tableLabel">
-    <thead>
-      <tr>
-        <th>Order Number</th>
-        <th>Details</th>
-        <th>Name</th>
-        <th>Email</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      @for (order of filteredOrders$ | async; track order.orderNumber; let i = $index) {
+<table class="table table-striped table-hover" aria-labelledby="tableLabel">
+  <thead>
+    <tr>
+      <th>Order #</th>
+      <th>Name</th>
+      <th>Details</th>
+      <th>Email</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    @for (order of filteredOrders$ | async; track order.orderNumber) {
       <tr>
         <th scope="row">{{ order.orderNumber }}</th>
-        <td><ngb-highlight [result]="order.custName" [term]="filter.value" /></td>
-        <td><ngb-highlight [result]="order.details" [term]="filter.value" /></td>
-        <td><ngb-highlight [result]="order.custEmail" [term]="filter.value" /></td>
-        <td><button (click)="editOrder(order.orderNumber!)">Edit</button></td>
+        <td><ngb-highlight [result]="order.custName ?? ''" [term]="filter.value" /></td>
+        <td><ngb-highlight [result]="order.details ?? ''" [term]="filter.value" /></td>
+        <td><ngb-highlight [result]="order.custEmail ?? ''" [term]="filter.value" /></td>
+        <td>
+          <button class="btn btn-sm btn-outline-primary" (click)="editOrder(order.orderNumber!)">Edit</button>
+        </td>
       </tr>
-      } @empty {
+    } @empty {
       <tr>
-        <td colspan="4" style="text-align: center">No orders found</td>
+        <td colspan="5" class="text-center text-muted">No orders found</td>
       </tr>
-      }
+    }
+  </tbody>
 </table>
-</div>

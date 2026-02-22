@@ -1,0 +1,215 @@
+<h2 class="mb-3">Management</h2>
+
+@if (errorMsg) {
+  <div class="alert alert-danger alert-dismissible py-2 mb-3" role="alert">
+    {{ errorMsg }}
+    <button type="button" class="btn-close" (click)="errorMsg = ''"></button>
+  </div>
+}
+
+<!-- ─── Option Lists ────────────────────────────────────────────── -->
+@for (cat of categories; track cat.key) {
+  <div class="mgmt-section">
+    <div class="mgmt-section-header" [class.collapsed]="!cat.expanded"
+         (click)="cat.expanded = !cat.expanded"
+         [title]="cat.expanded ? 'Collapse' : 'Expand'">
+      <span>{{ cat.label }} ({{ cat.items.length }})</span>
+      <span class="collapse-indicator">@if (cat.expanded) { &#8743; } @else { &#8744; }</span>
+    </div>
+    @if (cat.expanded) {
+      <div class="mgmt-section-body">
+        <div class="mb-2">
+          @for (item of cat.items; track item.id) {
+            @if (editingOptionId === item.id) {
+              <span class="option-chip">
+                <input class="option-edit-input" type="text" [(ngModel)]="editingOptionValue"
+                       (keydown.enter)="saveEditOption(cat, item)"
+                       (keydown.escape)="cancelEditOption()" />
+                <button class="save-btn" type="button" (click)="saveEditOption(cat, item)" title="Save">&#x2713;</button>
+                <button class="remove-btn" type="button" (click)="cancelEditOption()" title="Cancel">&#x2715;</button>
+              </span>
+            } @else {
+              <span class="option-chip" [class.inactive-chip]="!item.isActive"
+                    [title]="item.isActive ? 'Click to toggle inactive' : 'Click to toggle active'">
+                <span style="cursor:pointer" (click)="toggleActive(item)">{{ item.value }}</span>
+                <button class="edit-btn" type="button" (click)="startEditOption(item)" title="Rename">&#x270E;</button>
+                @if (item.isInUse) {
+                  <button class="recheck-btn" type="button" (click)="recheckOption(item)" title="Used in orders — click to recheck">&#x21BB;</button>
+                  <button class="remove-btn" type="button" disabled style="opacity:.35;cursor:not-allowed" title="Used in orders — recheck first">&#x2715;</button>
+                } @else {
+                  <button class="remove-btn" type="button" (click)="deleteOption(cat, item)" title="Delete">&#x2715;</button>
+                }
+              </span>
+            }
+          }
+          @if (cat.items.length === 0) {
+            <span class="text-muted small">No options yet.</span>
+          }
+        </div>
+        <div class="d-flex gap-2 mt-2" style="max-width:360px;">
+          <input class="form-control form-control-sm" type="text"
+                 placeholder="New value…"
+                 [(ngModel)]="cat.newValue"
+                 (keydown.enter)="addOption(cat)" />
+          <button class="btn btn-sm btn-outline-primary" type="button"
+                  (click)="addOption(cat)">Add</button>
+        </div>
+        <p class="text-muted small mt-1 mb-0">Click an item to toggle active/inactive. Inactive options are hidden in the order form.</p>
+      </div>
+    }
+  </div>
+}
+
+<!-- ─── Signature Cupcakes ─────────────────────────────────────── -->
+<div class="mgmt-section">
+  <div class="mgmt-section-header" [class.collapsed]="!sigExpanded"
+       (click)="sigExpanded = !sigExpanded"
+       [title]="sigExpanded ? 'Collapse' : 'Expand'">
+    <span>Signature Cupcakes ({{ signatures.length }})</span>
+    <span class="collapse-indicator">@if (sigExpanded) { &#8743; } @else { &#8744; }</span>
+  </div>
+  @if (sigExpanded) {
+    <div class="mgmt-section-body">
+      <table class="sig-table">
+        <thead>
+          <tr>
+            <th class="sortable-th" (click)="sortSig('name')">Name <span class="sort-indicator">{{ sigSortCol === 'name' ? (sigSortDir === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+            <th class="sortable-th" (click)="sortSig('cupcakeFlavor')">Flavor <span class="sort-indicator">{{ sigSortCol === 'cupcakeFlavor' ? (sigSortDir === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+            <th class="sortable-th" (click)="sortSig('fillingFlavor')">Filling <span class="sort-indicator">{{ sigSortCol === 'fillingFlavor' ? (sigSortDir === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+            <th class="sortable-th" (click)="sortSig('icingFlavor')">Icing <span class="sort-indicator">{{ sigSortCol === 'icingFlavor' ? (sigSortDir === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+            <th class="sortable-th" (click)="sortSig('isActive')">Status <span class="sort-indicator">{{ sigSortCol === 'isActive' ? (sigSortDir === 'asc' ? '▲' : '▼') : '⇅' }}</span></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (sig of sortedSignatures; track sig.id) {
+            @if (editingSig?.id === sig.id) {
+              <tr>
+                <td><input class="form-control form-control-sm" [(ngModel)]="editingSig!.name" /></td>
+                <td>
+                  <select class="form-select form-select-sm" [(ngModel)]="editingSig!.cupcakeFlavor">
+                    <option value="">-- Select --</option>
+                    @for (f of optionFlavors; track f) { <option [value]="f">{{ f }}</option> }
+                  </select>
+                </td>
+                <td>
+                  <select class="form-select form-select-sm" [(ngModel)]="editingSig!.fillingFlavor">
+                    <option value="">-- Select --</option>
+                    @for (f of optionFillingFlavors; track f) { <option [value]="f">{{ f }}</option> }
+                  </select>
+                </td>
+                <td>
+                  <select class="form-select form-select-sm" [(ngModel)]="editingSig!.icingFlavor">
+                    <option value="">-- Select --</option>
+                    @for (f of optionIcingFlavors; track f) { <option [value]="f">{{ f }}</option> }
+                  </select>
+                </td>
+                <td></td>
+                <td class="d-flex gap-1">
+                  <button class="btn btn-sm btn-success" type="button" (click)="saveEditSig()">Save</button>
+                  <button class="btn btn-sm btn-outline-secondary" type="button" (click)="cancelEditSig()">Cancel</button>
+                </td>
+              </tr>
+            } @else {
+              <tr [class.inactive-row]="!sig.isActive">
+                <td>{{ sig.name }}</td>
+                <td>{{ sig.cupcakeFlavor }}</td>
+                <td>{{ sig.fillingFlavor }}</td>
+                <td>{{ sig.icingFlavor }}</td>
+                <td>
+                  <span class="badge" [class.bg-success]="sig.isActive" [class.bg-secondary]="!sig.isActive">
+                    {{ sig.isActive ? 'Active' : 'Inactive' }}
+                  </span>
+                </td>
+                <td class="d-flex gap-1">
+                  <button class="btn btn-sm" type="button"
+                          [class.btn-outline-warning]="sig.isActive"
+                          [class.btn-outline-success]="!sig.isActive"
+                          (click)="toggleSigActive(sig)"
+                          [title]="sig.isActive ? 'Deactivate' : 'Activate'">
+                    {{ sig.isActive ? 'Deactivate' : 'Activate' }}
+                  </button>
+                  <button class="btn btn-sm btn-outline-secondary" type="button" (click)="startEditSig(sig)">Edit</button>
+                  <button class="btn btn-sm btn-outline-danger" type="button" (click)="deleteSig(sig)">Delete</button>
+                </td>
+              </tr>
+            }
+          }
+          @if (addingSig) {
+            <tr class="add-row">
+              <td><input class="form-control form-control-sm" [(ngModel)]="newSig.name" placeholder="Name" /></td>
+              <td>
+                <select class="form-select form-select-sm" [(ngModel)]="newSig.cupcakeFlavor">
+                  <option value="">-- Select --</option>
+                  @for (f of optionFlavors; track f) { <option [value]="f">{{ f }}</option> }
+                </select>
+              </td>
+              <td>
+                <select class="form-select form-select-sm" [(ngModel)]="newSig.fillingFlavor">
+                  <option value="">-- Select --</option>
+                  @for (f of optionFillingFlavors; track f) { <option [value]="f">{{ f }}</option> }
+                </select>
+              </td>
+              <td>
+                <select class="form-select form-select-sm" [(ngModel)]="newSig.icingFlavor">
+                  <option value="">-- Select --</option>
+                  @for (f of optionIcingFlavors; track f) { <option [value]="f">{{ f }}</option> }
+                </select>
+              </td>
+              <td></td>
+              <td class="d-flex gap-1">
+                <button class="btn btn-sm btn-success" type="button" (click)="saveSig()">Save</button>
+                <button class="btn btn-sm btn-outline-secondary" type="button" (click)="cancelAddSig()">Cancel</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      @if (!addingSig) {
+        <button class="btn btn-sm btn-outline-primary mt-2" type="button" (click)="startAddSig()">+ Add Signature</button>
+      }
+    </div>
+  }
+</div>
+
+<!-- ─── Deleted Orders ─────────────────────────────────────────── -->
+<div class="mgmt-section">
+  <div class="mgmt-section-header" [class.collapsed]="!deletedExpanded"
+       (click)="deletedExpanded = !deletedExpanded"
+       [title]="deletedExpanded ? 'Collapse' : 'Expand'">
+    <span>Deleted Orders ({{ deletedOrders.length }})</span>
+    <span class="collapse-indicator">@if (deletedExpanded) { &#8743; } @else { &#8744; }</span>
+  </div>
+  @if (deletedExpanded) {
+    <div class="mgmt-section-body">
+      <p class="text-muted small mb-2">Soft-deleted orders. Restoring makes them visible again in All Orders.</p>
+      <table class="table table-sm table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Order #</th>
+            <th>Name</th>
+            <th>Details</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (order of deletedOrders; track order.orderNumber) {
+            <tr>
+              <td>{{ order.orderNumber }}</td>
+              <td>{{ order.custName }}</td>
+              <td>{{ order.details }}</td>
+              <td class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-success" (click)="restoreOrder(order.orderNumber!)">Restore</button>
+                <button class="btn btn-sm btn-outline-primary" (click)="editOrder(order.orderNumber!)">View</button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="4" class="text-center text-muted">No deleted orders.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

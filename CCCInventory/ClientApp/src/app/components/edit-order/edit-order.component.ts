@@ -1,19 +1,55 @@
 import { Component, OnInit, EventEmitter, Output, Renderer2, ElementRef } from '@angular/core';
-import { FormGroup, FormControl, FormBuilder, Validators, AbstractControl, EmailValidator, FormArray } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+import { ReactiveFormsModule, FormGroup, FormBuilder, Validators, AbstractControl, FormArray } from '@angular/forms';
+import { RouterModule, ActivatedRoute, NavigationExtras, Router } from '@angular/router';
+import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { Order } from '../../models/order';
-import { ActivatedRoute, NavigationExtras, Router } from '@angular/router';
+import { OrderAttachment } from '../../models/order-attachment';
+import { SignatureCupcake } from '../../models/signature-cupcake';
 import { OrderService } from '../../services/order.service';
+import { AttachmentService } from '../../services/attachment.service';
+import { OptionService } from '../../services/option.service';
+import { SignatureCupcakeService } from '../../services/signature-cupcake.service';
 import { switchMap } from 'rxjs/operators';
 
 @Component({
   selector: 'app-edit-order-component',
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, NgbModule],
   templateUrl: './edit-order.component.html'
 })
 
 export class EditOrderComponent implements OnInit {
   @Output() orderUpdated = new EventEmitter<Order>();
-  
-  constructor(private _formBuilder: FormBuilder, private route: ActivatedRoute, private orderService: OrderService, private router: Router, private renderer: Renderer2, private el: ElementRef) { }
+
+  attachments: OrderAttachment[] = [];
+
+  // Option lists loaded from API
+  cakeTierSizes: string[] = [];
+  cakeShapes: string[] = [];
+  flavors: string[] = [];
+  fillingFlavors: string[] = [];
+  icingFlavors: string[] = [];
+  cupcakeSizes: string[] = [];
+  cookieTypes: string[] = [];
+  signatures: SignatureCupcake[] = [];
+
+  constructor(
+    private _formBuilder: FormBuilder,
+    private route: ActivatedRoute,
+    private orderService: OrderService,
+    public attachmentService: AttachmentService,
+    private router: Router,
+    private renderer: Renderer2,
+    private el: ElementRef,
+    private optionService: OptionService,
+    private sigService: SignatureCupcakeService
+  ) { }
+
+  // Active-only signatures for new orders; all for existing orders
+  get signaturesForForm(): SignatureCupcake[] {
+    return this.createOrUpdate === 'Update' ? this.signatures : this.signatures.filter(s => s.isActive);
+  }
 
   // used to decide which CRUD buttons to show
   public createOrUpdate: string = "Create";
@@ -65,9 +101,20 @@ export class EditOrderComponent implements OnInit {
     cookieInfo: this._formBuilder.array([])
   });
 
-  // initialize the order form, either based on the order number passed in the query params or a new order
-  // use a switchmap to ensure orderToEdit is set before initializing the form
   ngOnInit() {
+    this.optionService.getAll().subscribe(items => {
+      this.cakeTierSizes = items.filter(i => i.category === 'CakeTierSize' && i.isActive).map(i => i.value);
+      this.cakeShapes    = items.filter(i => i.category === 'CakeShape'    && i.isActive).map(i => i.value);
+      this.flavors       = items.filter(i => i.category === 'Flavor'       && i.isActive).map(i => i.value);
+      this.fillingFlavors= items.filter(i => i.category === 'FillingFlavor'&& i.isActive).map(i => i.value);
+      this.icingFlavors  = items.filter(i => i.category === 'IcingFlavor'  && i.isActive).map(i => i.value);
+      this.cupcakeSizes  = items.filter(i => i.category === 'CupcakeSize'  && i.isActive).map(i => i.value);
+      this.cookieTypes   = items.filter(i => i.category === 'CookieType'   && i.isActive).map(i => i.value);
+    });
+    this.sigService.getAll().subscribe(sigs => {
+      this.signatures = sigs;
+    });
+
     this.route.queryParams.pipe(
       switchMap(params => {
         if (params["orderNumber"]) {
@@ -87,6 +134,7 @@ export class EditOrderComponent implements OnInit {
         };
       } else {
         this.orderToEdit = result;
+        this.loadAttachments(result.orderNumber!);
       }
       this.initOrderFormGroup();
     });
@@ -139,7 +187,8 @@ export class EditOrderComponent implements OnInit {
         cupcakeQuantity: [cupcake.cupcakeQuantity],
         cupcakeFlavor: [cupcake.cupcakeFlavor],
         fillingFlavor: [cupcake.fillingFlavor],
-        icingFlavor: [cupcake.icingFlavor]
+        icingFlavor: [cupcake.icingFlavor],
+        signatureName: [cupcake.signatureName]
       }));
     });
 
@@ -178,7 +227,7 @@ export class EditOrderComponent implements OnInit {
   // format input as telephone number as it is typed
   onTelInput(event: Event, controlName: string) {
     const input = event.target as HTMLInputElement;
-    let val = input.value.replace(/\D/g, ''); // remove all non-numerics 
+    let val = input.value.replace(/\D/g, ''); // remove all non-numerics
     if (val.length < 9 && val !== null) {
       let finalVal = val!.match(/.{1,3}/g)!.join('-'); // add dash (-) after every 3rd char.
       this.editOrderFormGroup.controls[controlName].setValue(finalVal);
@@ -192,14 +241,12 @@ export class EditOrderComponent implements OnInit {
     this.editOrderFormGroup.controls[controlName].setValue(strippedValue);
   }
 
-  // update button
   onUpdateOrderClicked() {
-    this.action = 'create';
+    this.action = 'update';
   }
 
   updateOrder() {
     if (this.editOrderFormGroup.valid) {
-      // get the formarray values and put them into the order object
       const { cakeTierInfo, cupcakeInfo, pupcakeInfo, cookieInfo, ...formValue } = this.editOrderFormGroup.value;
 
       this.orderToEdit = {
@@ -215,7 +262,6 @@ export class EditOrderComponent implements OnInit {
         .subscribe((result: number) => {
           if (result === this.orderToEdit.orderNumber) {
             this.orderUpdated.emit(this.orderToEdit);
-            console.log(`Order ${this.orderToEdit.orderNumber} updated.`);
             this.onSubmitSuccess(`Order ${this.orderToEdit.orderNumber} updated.`);
           }
         },
@@ -230,7 +276,6 @@ export class EditOrderComponent implements OnInit {
     }
   }
 
-  // delete button
   onDeleteOrderClicked() {
     this.action = 'delete';
   }
@@ -241,36 +286,49 @@ export class EditOrderComponent implements OnInit {
       .UpdateOrder(this.orderToEdit)
       .subscribe((result: number) => {
         if (result === this.orderToEdit.orderNumber) {
-          console.log(`Order ${this.orderToEdit.orderNumber} marked as deleted.`);
           this.onSubmitSuccess(`Order ${this.orderToEdit.orderNumber} marked as deleted.`);
         }
       },
         error => {
-          const errorMessage = error.error ? error.error.message : error.message
+          const errorMessage = error.error ? error.error.message : error.message;
           this.toastFailure(errorMessage);
       }
     );
   }
 
-  // create button
+  restoreOrder() {
+    this.orderService.RestoreOrder(this.orderToEdit.orderNumber!).subscribe(() => {
+      this.orderToEdit = { ...this.orderToEdit, deleteFlag: false };
+      this.toastSuccess(`Order ${this.orderToEdit.orderNumber} restored.`);
+    });
+  }
+
   onCreateOrderClicked() {
     this.action = 'create';
   }
 
   createOrder() {
     if (this.editOrderFormGroup.valid) {
-      this.orderToEdit.orderNumber;
+      // Assemble form values the same way updateOrder does
+      const { cakeTierInfo, cupcakeInfo, pupcakeInfo, cookieInfo, ...formValue } = this.editOrderFormGroup.value;
+      this.orderToEdit = {
+        ...formValue,
+        cakes: cakeTierInfo,
+        cupcakes: cupcakeInfo,
+        pupcakes: pupcakeInfo,
+        cookies: cookieInfo
+      };
+
       this.orderService
         .AddOrder(this.orderToEdit)
         .subscribe((result: number) => {
-          if (result === this.orderToEdit.orderNumber) {
-            this.orderUpdated.emit(this.orderToEdit);
-            console.log(`Order ${this.orderToEdit.orderNumber} created.`);
-            this.onSubmitSuccess(`Order ${this.orderToEdit.orderNumber} created.`);
-          }
+          // Use the server-assigned order number, not the pre-filled estimate
+          this.orderToEdit = { ...this.orderToEdit, orderNumber: result };
+          this.orderUpdated.emit(this.orderToEdit);
+          this.onSubmitSuccess(`Order ${result} created.`);
         },
           error => {
-            const errorMessage = error.error ? error.error.message : error.message
+            const errorMessage = error.error ? error.error.message : error.message;
             this.toastFailure(errorMessage);
           }
         );
@@ -280,7 +338,6 @@ export class EditOrderComponent implements OnInit {
     }
   }
 
-  // handle form submission
   onSubmit() {
     switch (this.action) {
       case 'create':
@@ -295,39 +352,31 @@ export class EditOrderComponent implements OnInit {
     }
   }
 
-  // finalize form submission
   onSubmitSuccess(message: string) {
-    console.log(this.editOrderFormGroup.value);
-    this.toastSuccess(message)
+    this.toastSuccess(message);
 
-    // reload the page in order to reset the form
     let navDetails: NavigationExtras = {
       queryParams: {
         orderNumber: this.orderToEdit.orderNumber
       }
     };
 
-    this.router.navigate(["edit-order"], navDetails)
+    this.router.navigate(["edit-order"], navDetails);
   }
 
-  // checks control validity
   isInvalid(controlName: string): boolean {
-    // action is defaulted to none on page load. If its anything else from a button click, then check for invalidity
     if (this.action !== 'none') {
       const control = this.editOrderFormGroup.controls[controlName];
       return control.invalid;
     }
-
     return false;
   }
 
-  // get invalid controls
   getInvalidControlLabels(): string {
     const invalidControlLabels: string[] = [];
     Object.keys(this.editOrderFormGroup.controls).forEach(controlName => {
       const control = this.editOrderFormGroup.controls[controlName];
       if (control.invalid) {
-        // get the labes of the invalid controls in the form array
         if (control instanceof FormArray) {
           control.controls.forEach((groupControl: AbstractControl, index: number) => {
             const group = groupControl as FormGroup;
@@ -343,7 +392,6 @@ export class EditOrderComponent implements OnInit {
               }
             });
           });
-        // get the labels of other invalid controls
         } else {
           const label = document.querySelector(`label[for="${controlName}"]`);
           if (label) {
@@ -357,7 +405,6 @@ export class EditOrderComponent implements OnInit {
     return invalidControlLabels.join(', ');
   }
 
-  // toast of success :D
   toastSuccess(message: string) {
     const toastElement = this.el.nativeElement.querySelector('#toastSuccess');
     if (message) {
@@ -367,10 +414,9 @@ export class EditOrderComponent implements OnInit {
     this.renderer.addClass(toastElement, 'show');
     setTimeout(() => {
       this.renderer.removeClass(toastElement, 'show');
-    }, 3000); // Hide the toast after 3 seconds
+    }, 3000);
   }
 
-  // toast of failure D:
   toastFailure(errorMessage: string) {
     const toastElement = this.el.nativeElement.querySelector('#toastFailure');
     const toastBody = this.el.nativeElement.querySelector('#toastFailure .toast-body');
@@ -378,28 +424,54 @@ export class EditOrderComponent implements OnInit {
     this.renderer.addClass(toastElement, 'show');
     setTimeout(() => {
       this.renderer.removeClass(toastElement, 'show');
-    }, 15000); // Hide the toast after 15 seconds
+    }, 15000);
   }
 
-  // add/delete/get rows for Cake, Cupcake, Pupcake, and Cookie sections
+  loadAttachments(orderNumber: number) {
+    this.attachmentService.GetAttachments(orderNumber).subscribe(attachments => {
+      this.attachments = attachments;
+    });
+  }
+
+  onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+
+    const files = Array.from(input.files);
+    this.attachmentService.UploadFiles(this.orderToEdit.orderNumber!, files).subscribe({
+      next: newAttachments => {
+        this.attachments = [...this.attachments, ...newAttachments];
+        input.value = ''; // reset so same file can be re-uploaded if needed
+        this.toastSuccess(`${newAttachments.length} file(s) uploaded.`);
+      },
+      error: err => {
+        const msg = err.error ?? err.message ?? 'Upload failed.';
+        this.toastFailure(typeof msg === 'string' ? msg : JSON.stringify(msg));
+      }
+    });
+  }
+
+  deleteAttachment(id: number) {
+    this.attachmentService.DeleteAttachment(id).subscribe({
+      next: () => {
+        this.attachments = this.attachments.filter(a => a.id !== id);
+      },
+      error: err => {
+        const msg = err.error ?? err.message ?? 'Delete failed.';
+        this.toastFailure(typeof msg === 'string' ? msg : JSON.stringify(msg));
+      }
+    });
+  }
+
   addRow(formGroupName: string, formGroup: FormGroup) {
     const formArray = this.editOrderFormGroup.get(formGroupName) as FormArray;
     formArray.push(this._formBuilder.group(formGroup.controls));
 
-    // Update the corresponding header shown variable
     switch (formGroupName) {
-      case 'cakeTierInfo':
-        this.isCakeDetailsHeaderShown = true;
-        break;
-      case 'cupcakeInfo':
-        this.isCupcakeDetailsHeaderShown = true;
-        break;
-      case 'pupcakeInfo':
-        this.isPupcakeDetailsHeaderShown = true;
-        break;
-      case 'cookieInfo':
-        this.isCookieDetailsHeaderShown = true;
-        break;
+      case 'cakeTierInfo': this.isCakeDetailsHeaderShown = true; break;
+      case 'cupcakeInfo': this.isCupcakeDetailsHeaderShown = true; break;
+      case 'pupcakeInfo': this.isPupcakeDetailsHeaderShown = true; break;
+      case 'cookieInfo': this.isCookieDetailsHeaderShown = true; break;
     }
   }
 
@@ -407,31 +479,20 @@ export class EditOrderComponent implements OnInit {
     const formArray = this.editOrderFormGroup.get(formGroupName) as FormArray;
     formArray.removeAt(index);
 
-    // Update the corresponding header shown variable
     if (formArray.length === 0) {
       switch (formGroupName) {
-        case 'cakeTierInfo':
-          this.isCakeDetailsHeaderShown = false;
-          break;
-        case 'cupcakeInfo':
-          this.isCupcakeDetailsHeaderShown = false;
-          break;
-        case 'pupcakeInfo':
-          this.isPupcakeDetailsHeaderShown = false;
-          break;
-        case 'cookieInfo':
-          this.isCookieDetailsHeaderShown = false;
-          break;
+        case 'cakeTierInfo': this.isCakeDetailsHeaderShown = false; break;
+        case 'cupcakeInfo': this.isCupcakeDetailsHeaderShown = false; break;
+        case 'pupcakeInfo': this.isPupcakeDetailsHeaderShown = false; break;
+        case 'cookieInfo': this.isCookieDetailsHeaderShown = false; break;
       }
     }
   }
 
-  // get form controls from a form group
   getControls(formGroupName: string) {
     return (this.editOrderFormGroup.get(formGroupName) as FormArray).controls;
   }
 
-  // get blank form controls when adding a new row
   getBlankCakeFormControls() {
     return this._formBuilder.group({
       tierSize: ['', Validators.required],
@@ -450,8 +511,38 @@ export class EditOrderComponent implements OnInit {
       cupcakeQuantity: ['', Validators.required],
       cupcakeFlavor: ['', Validators.required],
       fillingFlavor: ['', Validators.required],
-      icingFlavor: ['', Validators.required]
+      icingFlavor: ['', Validators.required],
+      signatureName: ['']
     });
+  }
+
+  addSignatureCupcakeRow() {
+    const group = this._formBuilder.group({
+      cupcakeSize: ['Regular', Validators.required],
+      cupcakeQuantity: ['', Validators.required],
+      cupcakeFlavor: ['', Validators.required],
+      fillingFlavor: ['', Validators.required],
+      icingFlavor: ['', Validators.required],
+      signatureName: ['']
+    });
+    const arr = this.editOrderFormGroup.get('cupcakeInfo') as FormArray;
+    arr.push(group);
+    this.isCupcakeDetailsHeaderShown = true;
+  }
+
+  onSignatureSelected(event: Event, index: number) {
+    const name = (event.target as HTMLInputElement).value;
+    const sig = this.signatures.find(s => s.name === name);
+    if (sig) {
+      const arr = this.editOrderFormGroup.get('cupcakeInfo') as FormArray;
+      const row = arr.at(index) as FormGroup;
+      row.patchValue({
+        cupcakeFlavor: sig.cupcakeFlavor,
+        fillingFlavor: sig.fillingFlavor,
+        icingFlavor: sig.icingFlavor,
+        signatureName: sig.name
+      });
+    }
   }
 
   getBlankPupcakeFormControls() {

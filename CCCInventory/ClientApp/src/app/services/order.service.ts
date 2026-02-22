@@ -1,43 +1,47 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs/internal/Observable';
+import { Observable } from 'rxjs';
 import { Order } from '../models/order';
-import { environment } from 'src/environments/environment';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class OrderService {
-  private url = "Order"
-  private editUrl = "edit-order"
+  private readonly baseUrl = `${environment.apiUrl}/Order`;
 
   constructor(private http: HttpClient) { }
 
   public GetOrders(): Observable<Order[]> {
-    return this.http.get<Order[]>(`${environment.apiUrl}/${this.url}`);
+    return this.http.get<Order[]>(this.baseUrl);
+  }
+
+  public GetDeletedOrders(): Observable<Order[]> {
+    return this.http.get<Order[]>(`${this.baseUrl}/deleted`);
   }
 
   public GetOrder(orderNumber: number): Observable<Order> {
-    var tmp = `${environment.apiUrl}/order/${orderNumber}`;
-    console.log("url is: " + tmp);
-    return this.http.get<Order>(tmp);
+    return this.http.get<Order>(`${this.baseUrl}/${orderNumber}`);
   }
 
   public AddOrder(order: Order): Observable<number> {
-    // Create a copy of the order object without the orderNumber property
     const { orderNumber, ...orderWithoutOrderNumber } = order;
-    return this.http.post<number>(`${environment.apiUrl}/${this.url}`, orderWithoutOrderNumber);
+    return this.http.post<number>(this.baseUrl, orderWithoutOrderNumber);
   }
 
   public UpdateOrder(order: Order): Observable<number> {
-    return this.http.put<number>(`${environment.apiUrl}/${this.url}`, order);
+    return this.http.put<number>(this.baseUrl, order);
+  }
+
+  public RestoreOrder(orderNumber: number): Observable<number> {
+    return this.http.put<number>(`${this.baseUrl}/${orderNumber}/restore`, {});
   }
 
   public DeleteOrder(orderNumber: number): Observable<number> {
-    return this.http.delete<number>(`${environment.apiUrl}/${this.url}/${orderNumber}`);
+    return this.http.delete<number>(`${this.baseUrl}/${orderNumber}`);
   }
 
   public GetNewOrderNumber(): Observable<number> {
-    return this.http.get<number>(`${environment.apiUrl}/${this.url}/newOrderNumber`);
+    return this.http.get<number>(`${this.baseUrl}/newOrderNumber`);
   }
 }
