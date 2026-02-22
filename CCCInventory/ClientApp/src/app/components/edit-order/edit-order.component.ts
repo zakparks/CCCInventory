@@ -145,7 +145,6 @@ export class EditOrderComponent implements OnInit {
       custName: this.orderToEdit.custName,
       custEmail: this.orderToEdit.custEmail,
       custPhone: this.orderToEdit.custPhone,
-      formFiles: this.orderToEdit.formFiles,
       details: this.orderToEdit.details,
       pickupOrDelivery: this.orderToEdit.pickupOrDelivery,
       secondaryName: this.orderToEdit.secondaryName,
