@@ -1,8 +1,8 @@
 # CCCInventory — Development Plan
 
 **Project:** Custom Cake & Cookie (CCC) Bakery Order Management System
-**Last Updated:** 2026-02-21
-**Status:** Active Development — Phase 4.5 Complete, Phase 8/7 Next
+**Last Updated:** 2026-02-23
+**Status:** Active Development — Phase 4.5 Complete; Phase 5 (Order Form Overhaul) Next
 
 ---
 
@@ -23,423 +23,585 @@ This system is a digital replacement for paper order forms used in a bakery. The
 | UI | Bootstrap + ng-bootstrap | 5.3.3 / 18.0 | Working |
 | Auth | None | — | Not yet implemented |
 
-**What works:** Basic order CRUD, order search, form-based entry, soft deletes, multi-product support (cakes, cupcakes, cookies, pupcakes).
+**What works:** Full order CRUD with soft delete, multi-product support (cakes, cupcakes, cookies, pupcakes), file attachments, monthly/weekly calendar view, bake sheet with grouped totals, management page for option lists and signature cupcakes.
 
-**What is missing or broken:**
+**What is still missing:**
 - No authentication
-- No calendar view
-- No bake sheet
-- No attachment handling (field exists on model, not wired up)
 - No Google Calendar or Google Maps integration
-- Hardcoded localhost API URL in frontend service
-- Single-machine deployment only
+- Production deployment not yet set up (single-machine dev only)
+- Significant UX refinements from first demo (Phase 5–7)
+- Party Rentals feature not yet built
 
 ---
 
-## Phase 0 — Tech Refresh & Project Cleanup ✅ Completed
+## Phase 0 — Tech Refresh & Project Cleanup ✅
 
-*Do this before any new features to avoid building on a stale foundation.*
-
-**Completed 2026-02-21.** .NET 8→9, Angular 17→19 (standalone), ng-bootstrap 16→18, esbuild application builder, fixed EF Core `.Include()` for navigation properties, fixed `GetNewOrderNumber()` crash on empty table, added global error handling middleware in `Program.cs`, migrated all components to standalone, removed legacy NgModule/SSR/oidc-client, fixed production `environment.prod.ts` (was missing `apiUrl`).
-
-### 0.1 — Upgrade Dependencies
-
-**Backend**
-- Upgrade to **.NET 9** (latest LTS-adjacent stable; .NET 10 ships Nov 2025 — consider targeting 10 if timeline allows)
-- Upgrade all NuGet packages to latest compatible versions
-- Remove the `OrderDatabase` SSDT project — it is redundant with EF Core migrations and adds friction
-
-**Frontend**
-- Upgrade to **Angular 19** (current stable as of early 2026)
-- Upgrade `ng-bootstrap` to match
-- Upgrade all `npm` packages; run `npm audit fix`
-- Standardize on standalone components throughout (AllOrdersComponent is already standalone; EditOrderComponent is not — make it consistent)
-
-### 0.2 — Project Reorganization
-
-Current structure has the Angular app nested inside the .NET project. This is the default ASP.NET SPA template structure and is acceptable to keep. However, clarify the following:
-
-- Remove `OrderDatabase/` SSDT project from the solution entirely
-- Consolidate model definitions: the `OrderItems/` folder in the backend and `models/` folder in the frontend should stay in sync; consider generating TypeScript types from C# models (NSwag or Swashbuckle + openapi-generator)
-- Move the hardcoded API base URL (`https://localhost:7005/api`) out of `environment.ts` and into a proper environment-specific config so production and dev point to different hosts
-- Add a `.editorconfig` and formatting baseline if not present
-
-### 0.3 — Code Quality Baseline
-
-- Fix the TODO in `OrderController.cs` regarding route naming
-- Add basic global error handling middleware in `Program.cs`
-- Add an Angular global HTTP error interceptor so API failures surface to the user
-- Verify EF Core relationships for `Cake`, `Cupcake`, `Cookie`, `Pupcake` — these need proper foreign keys to `Order` or the form data will not persist correctly
+.NET 8→10, Angular 17→19 standalone, esbuild, fixed EF Core `.Include()` / `GetNewOrderNumber()`, global error handling, removed legacy NgModule/SSR/oidc-client.
 
 ---
 
-## Phase 1 — Core MVP Hardening ✅ Completed
+## Phase 1 — Core MVP Hardening ✅
 
-*The application must be reliable and complete before adding new features.*
-
-**Completed 2026-02-21.** Fixed `createOrder()` to correctly assemble form values before submitting. Fixed `formArrayName` + `@for` template pattern. Fixed column order in all-orders table. Added `GetDeletedOrders` and `RestoreOrder` endpoints. Added `DeletedOrdersComponent` with route and nav link. Rewrote `edit-order.component.html` with `@if`/`@for`, inline validation, and radio buttons. Rewrote `home.component.html` with dashboard cards. Both `dotnet build` and `ng build` passing with 0 errors.
-
-### 1.1 — Fix Order Item Persistence
-
-**Problem:** `Cake`, `Cupcake`, `Cookie`, and `Pupcake` models exist but it is unclear if they are properly related to `Order` via EF navigation properties and stored in their own tables. This is the most critical bug risk.
-
-**Action:**
-- Audit `Order.cs` and `DataContext.cs` — confirm navigation properties, foreign keys, and EF `OnModelCreating` configuration
-- Confirm that creating/updating an order correctly saves all nested items (cakes, cupcakes, etc.) and that they load back correctly
-- Write a migration if the schema needs correction
-
-### 1.2 — Form Validation & UX
-
-- Complete form validation in `EditOrderComponent` — all required fields should block submission
-- Show validation errors inline (ng-bootstrap has form feedback support)
-- Confirm vs. discard changes prompt when navigating away with unsaved edits
-- Success/error toast notifications on save
-
-### 1.3 — Order Numbering
-
-- Verify that `GET /api/order/newOrderNumber` returns the correct next order number reliably
-- Add a uniqueness constraint on `OrderNumber` at the database level if not already present
-
-### 1.4 — Soft Delete Audit
-
-- Confirm deleted orders are excluded from all-orders list and bake sheet
-- Add a "View Deleted Orders" admin screen so records can be recovered if needed
+Fixed order item persistence, form validation, toast notifications, inline `@if`/`@for` templates, home dashboard, `GetDeletedOrders`/`RestoreOrder` endpoints.
 
 ---
 
-## Phase 2 — Attachments ✅ Completed
+## Phase 2 — Attachments ✅
 
-*Reference photos and inspiration links are part of the current paper workflow.*
-
-**Decisions confirmed:** Files stored on disk at `./attachments/{orderNumber}/` relative to app. Upload types: images and PDFs only, by employees. No inspiration URL feature — URLs go in the notes field. Phase 2.3 (link attachments) is skipped.
-
-**Completed 2026-02-21.** Also upgraded .NET 9 → 10 and EF Core 9 → 10 to match the installed SDK/tools (dotnet 10.0.100, dotnet-ef 10.0.1). Created `OrderAttachment` model (`Id`, `OrderNumber`, `FileName`, `StoredFileName`, `ContentType`, `UploadedAt`). Added `DbSet<OrderAttachment>` to DataContext. Created `AttachmentController` with GET list, POST upload (multipart), DELETE, and GET file endpoints. Files stored at `{ContentRootPath}/attachments/{orderNumber}/` with guid-based stored filenames. EF migration `AddOrderAttachment` generated (run `dotnet ef database update` when DB is accessible). Angular: added `OrderAttachment` interface, `AttachmentService`, and attachment card grid in edit-order form (images show thumbnail, PDFs show document icon, View + Delete per file). Attachments load automatically when editing an existing order.
-
-### 2.1 — File Upload
-
-- Add a `POST /api/order/{orderNumber}/attachments` endpoint that accepts multipart form data
-- Store files on disk in a configured folder (e.g., `attachments/{orderNumber}/`) or in the database as BLOBs
-  - **Recommendation:** Store on disk, store file path/metadata in a new `OrderAttachment` table
-- `OrderAttachment` model: `Id`, `OrderNumber` (FK), `FileName`, `ContentType`, `FilePath`, `UploadedAt`
-
-### 2.2 — Attachment UI
-
-- Add an attachments section to `EditOrderComponent`
-- Drag-and-drop or click-to-upload for image files and PDFs
-- Show thumbnails for images, icons for other file types
-- Allow deletion of individual attachments
-
-### 2.3 — Link Attachments
-
-- Allow adding URLs as "link attachments" (customer pastes inspiration link)
-- Stored in the same `OrderAttachment` table with a `Url` field instead of a file path
+`OrderAttachment` model, `AttachmentController` (upload/list/delete/serve), files stored at `attachments/{orderNumber}/` with guid filenames, Angular attachment card grid with thumbnails in edit form.
 
 ---
 
-## Phase 3 — Calendar View ✅ Partially Complete (3.1 done)
+## Phase 3 — Calendar View
 
-*Replaces the manual Google Calendar entry step in the current workflow.*
+### 3.1 ✅
 
-### 3.1 — Calendar Component (In-App) ✅ Completed
+Custom standalone monthly/weekly calendar at `/calendar`. Orders appear on their `OrderDateTime`. Blue = pickup, green = delivery. Month and week view toggle. Click order pill to open edit form. Seed data: 30 realistic orders distributed Tue–Sat of the upcoming week.
 
-**Completed 2026-02-21.** Custom standalone monthly calendar grid (no external library — angular-calendar requires Angular >=20). Orders appear on their `OrderDateTime` date. Blue = pickup, green = delivery. Click any order pill to open it in the edit form. Prev/Next/Today navigation. Located at `/calendar`, linked in nav and home dashboard. Database seeded with 15 realistic fake orders (spread over current month) via `Data/SeedData.cs`; seeds automatically on first startup if Orders table is empty. Also added `context.Database.Migrate()` to `Program.cs` for zero-touch deployment.
+**Note:** The calendar page will be removed once Google Calendar integration (Phase 10) is live. The component and route are temporary infrastructure.
 
-**Remaining for 3.1:** Weekly view toggle (future enhancement).
+### 3.2 — Due Date Field ✅ (N/A)
 
-### 3.2 — Due Date Field
+Confirmed: `OrderDateTime` is the pickup/delivery due date. `DateOrderPlaced` (already on the model) tracks when the order was placed. No separate `DueDate` field is needed.
 
-- Add a `DueDate` (DateTime) field to the `Order` model if not already distinct from `OrderDateTime`
-- Add a migration
-- Surface it prominently in the edit form and use it as the calendar event date
+### 3.3 — Google Calendar Integration
 
-### 3.3 — Google Calendar Integration ⏳ TODO
+Moved to Phase 10.
 
-**Prerequisites:**
-- Cloudflare Tunnel + domain must be live first (OAuth redirect URI must be a public HTTPS URL)
+---
+
+## Phase 4 — Bake Sheet ✅
+
+`BakeSheetController` (`GET /api/bakesheet?weekOf={date}`), Mon–Sun window, navigation properties included. Angular `BakeSheetComponent` at `/bake-sheet`: collapsible orders list (collapsed by default), sortable cakes totals table (default: grouped by flavor, size ascending), cupcakes/cookies/pupcakes totals. Prev/Next/This-Week navigation. Print button with `@media print` styles.
+
+**Note:** Bake Sheet is being fully redesigned in Phase 7.
+
+---
+
+## Phase 4.5 — Management Page ✅
+
+`OptionItem` and `SignatureCupcake` models, `OptionController` (CRUD + in-use check + recheck endpoint), `SignatureCupcakeController`. `ManagementComponent` at `/management`: collapsible option category sections (inline rename, active toggle, delete protection if in use), sortable signature cupcakes table (activate/deactivate, dropdown editors), deleted orders recovery. Order form: dynamic dropdowns from API, Custom + Signature cupcake row types, datalist combobox auto-fill.
+
+**Note:** The "Deleted Orders" section will be removed in Phase 5. Archived order management moves to All Orders. Party Rentals management items will be added in Phase 8.
+
+---
+
+## Phase 5 — Order Form & Core Data Model Overhaul
+
+*First demo feedback. This is the largest phase — it touches the core data model, the order form, and several cross-cutting behaviors (Archive, Autosave, status system). All sub-phases share the same migration and should be implemented together.*
+
+### 5.1 — Data Model Changes
+
+**New fields on `Order`:**
+- `Title` (string?) — short label displayed at the top of the form; used in calendar event titles
+- `CancellationReason` (string?) — required when cancelling an order
+- `CancelledAt` (DateTime?) — timestamp set when the order is cancelled
+- `CancelledFlag` (bool) — replaces `DeleteFlag`; set via the cancellation flow
+- `IsReadyForPickup` (bool) — set manually via the "Ready for Pickup" toggle on the form
+- Rename `DeleteFlag` → `CancelledFlag` (and all related backend references throughout)
+
+**New `OptionItem` category:** Cookie Sizes (seed: "Standard", "Small")
+
+**New order item type:** `OtherItem` — two free-text fields: `Name` and `Item`
+
+**Cake model additions:**
+- `Flavor2` (string?) — second flavor for half-and-half cakes
+- Per-layer flavor support — design TBD (JSON column or related table); see Open Questions
+
+**Migration required** for all of the above.
+
+### 5.2 — Terminology: Delete → Cancel/Archive
+
+Rename all "Delete" references throughout the application:
+- Backend: `DeleteFlag` → `CancelledFlag`, `GetDeletedOrders` → `GetCancelledOrders`, `DeleteOrder` → `CancelOrder`
+- Frontend: "Delete" button → "Archive" button; toast messages and other UI text updated accordingly
+- No functional change — soft-delete behavior is preserved; the user-facing label is "Archive" but the internal concept is now "Cancelled"
+
+### 5.3 — Cancel Flow (Archive button)
+
+When the user clicks "Archive" (cancel an order):
+1. A modal opens with a required free-text field labeled "Cancellation Reason" and Archive / Cancel buttons
+2. On Archive: save `CancellationReason`, set `CancelledAt` = now, set `CancelledFlag` = true
+3. On Cancel: close modal, do nothing
+
+The order remains visible in the **Cancelled** filter until its `OrderDateTime` passes, at which point it transitions to **Archived** automatically.
+
+When a **cancelled order** is opened:
+- Display the `CancellationReason` prominently between the "Order Form" header and the order title — large font, editable textbox, thick red border (matching the Archive button style, but not a button)
+- Show a "Restore" button at the bottom alongside "Update Order"
+- On Restore: prepend to the Details field: `"Original Cancellation Reason - [CancelledAt timestamp] - [CancellationReason text]"`; clear `CancelledFlag` and `CancellationReason`/`CancelledAt`
+
+### 5.4 — Order Status System
+
+Five states used across the application:
+
+| State | Meaning |
+|---|---|
+| **Active** | Open order, due date in the future, required fields complete, not cancelled |
+| **Incomplete** | Active, but missing required fields or has no items added to the order |
+| **Ready for Pickup** | User has toggled "Ready for Pickup" on the order form |
+| **Cancelled** | Cancellation reason recorded, but order date has not yet passed |
+| **Archived** | Order date has passed — applies to all orders regardless of how they ended (fulfilled, ready, or cancelled) |
+
+Backend flags: `CancelledFlag` (manually cancelled via Archive button), `IsReadyForPickup` (toggle on form). Incomplete is derived (required fields null/empty or no items). Archived is derived when `OrderDateTime < now`. Active is the remaining default.
+
+**Note:** The old "Inactive" concept is removed. The old "Delete/Archive" flag is now "Cancelled." True archival (moving to the Archived filter) happens automatically once the order date passes for any order.
+
+### 5.5 — Autosave & Incomplete Orders
+
+**Autosave behavior:**
+- Order Number is auto-filled on page load — it does not count toward the trigger
+- The first autosave is triggered once at least one other field has been filled
+- Saves are debounced (~3–5 seconds after the last change)
+- On the first autosave of a new order: create the order record with whatever data is present, bypassing required field validation
+- Orders missing required fields or with no items are flagged as **Incomplete**
+
+**Homepage — Incomplete Orders section:**
+- Add a new section on the homepage/overview
+- Link to the All Orders page pre-filtered to Incomplete
+- If any incomplete orders exist: solid red button; otherwise: white button with blue text (matching other overview buttons)
+
+### 5.6 — Order Form: Title Field
+
+At the very top of the order form, before the Order Information section:
+- A "Title" label and single-line text input on the same line, styled the same as other subheaders ("Order Information", "Add to order:", etc.)
+- Followed by a `<hr>` horizontal rule
+
+### 5.7 — Order Form: Layout Reorganization
+
+Reorganize the Order Information section into a 3-column grid:
+
+| Column 1 | Column 2 | Column 3 |
+|---|---|---|
+| Order Number | Customer Name | Details (textarea, spans rows) |
+| Customer Email | Customer Phone Number | |
+| Delivery/Pickup Date | Delivery/Pickup Time | |
+| Delivery Location | Initial Contact Method | |
+| Day-of Contact Name | Day-of Contact Phone | |
+
+- Date and Time are two separate controls (DatePicker + TimePicker), combined into the existing `OrderDateTime` on save
+- Below the grid: 3 radio buttons — Pickup / Delivery / **Tasting**
+- Below the radio buttons: 4 toggles in a row — Contract Sent, Day-of Text Sent, Confirmation Text Sent, **Ready for Pickup**
+  - Ready for Pickup is set manually by the user; it does not auto-toggle
+  - In the backend this maps to `IsReadyForPickup = true`
+- Below the toggles: the "Add to order:" section with item type buttons
+- Cake/cupcake/cookie/pupcake/other rows follow
+
+### 5.8 — Order Form: Dropdown Uniformity
+
+All dropdowns in the order form must have a uniform look and feel matching the Cake Tier Size, Cake Shape, and Cupcake Size dropdowns.
+
+### 5.9 — Order Form: Navigation Bug Fix
+
+**Bug:** Opening an order from All Orders or the calendar page, then clicking "Order Form" in the nav, loads that order instead of a blank new order form.
+
+Fix: ensure navigating to the new-order route always resets component state. The edit-order component should not retain the previous order when the route has no order ID.
+
+### 5.10 — Order Form: Cake Improvements
+
+**Half-and-half cakes:**
+- The existing toggle should reveal a second Flavor dropdown when active
+- When toggled off, only one flavor dropdown is shown
+
+**Per-layer flavor customization:**
+- Add a "Custom layer flavors" option (toggle or checkbox)
+- When enabled, each tier gets its own Flavor dropdown instead of the shared flavor
+- Show/hide to keep the UI uncluttered when not in use
+
+**Cake labeling:**
+- Next to the add/remove buttons for each cake, display a large letter label: A, B, C, etc.
+
+**Auto-notes:**
+- When a cake is added, automatically append `"Cake A -\n"` (or B, C, etc.) to the order Notes field
+
+### 5.11 — Order Form: Cupcake Cleanup
+
+When "Custom Cupcakes" row type is selected, hide the Signature dropdown — it is not relevant for custom cupcakes.
+
+### 5.12 — Order Form: Cookies
+
+Add a Size dropdown to cookie rows, populated from the new Cookie Sizes option category in Management (seed data: "Standard", "Small").
+
+### 5.13 — Order Form: Other Item Type
+
+Add an "Other" button to the "Add to order:" section. Other rows have two free-text fields: Name and Item.
+
+### 5.14 — Order Form: Attachment Fixes
+
+**Bug fix:** The Attachments section does not appear when loading a fresh new order form. It should be visible and accept uploads before the order has been first saved.
+
+**Attachment modal carousel:** Clicking an attachment thumbnail opens a modal showing the file at a larger size. If multiple attachments exist, the modal shows a carousel allowing navigation through all of them.
+
+### 5.15 — Order Form: Pricing Fields (Placeholder)
+
+Add the following new fields to the Pricing section: Labor, Flavor Upgrade, Lookbook Price.
+
+⚠ Full pricing auto-calculation design is TBD — see Phase 13. For now, surface these as editable numeric inputs with no auto-calculation logic.
+
+### 5.16 — Management Page Cleanup
+
+Remove the "Deleted Orders" collapsible section. Archived order management moves to the All Orders page (Phase 6).
+
+---
+
+## Phase 6 — All Orders & Homepage
+
+*Depends on Phase 5 (status system, new fields). Primarily display, filtering, and sorting work — no additional model changes.*
+
+### 6.1 — All Orders: Table Improvements
+
+- All columns are sortable (click header to toggle asc/desc)
+- Add a **Date** column (`OrderDateTime` formatted as date)
+- Default sort: Date ascending (soonest first)
+
+### 6.2 — All Orders: Status Filter Toggle
+
+At the top of the page, add a toggle button group (same UI as Month/Week on the calendar page):
+
+**Active | Incomplete | Ready for Pickup | Cancelled | Archived**
+
+- Default on page load: **Active**
+- Exception: when navigated from the Incomplete button on the homepage, default to **Incomplete**
+- The Incomplete tab displays a visual indicator (red text or badge) if any incomplete orders exist
+- Archived = orders whose `OrderDateTime` has passed (includes all fulfilled, ready, and cancelled orders past their date)
+- Cancelled = orders with `CancelledFlag = true` whose `OrderDateTime` has not yet passed
+
+### 6.3 — Auto-Archive
+
+Orders automatically move to the Archived state once their `OrderDateTime` passes. This is derived at query time — no stored flag needed. The backend filters results by comparing `OrderDateTime` to `DateTime.Now` when returning orders for each filter tab.
+
+---
+
+## Phase 7 — Bake Sheet Redesign
+
+*Full redesign. The existing aggregated-totals approach is replaced with an order-level, per-layer row model. Mostly independent from Phase 5/6.*
+
+### 7.1 — Structure Changes
+
+- **Remove** the "Orders This Week" collapsible section entirely
+- **Combine** cakes and cupcakes into a single table — rows interleaved, grouped by flavor
+- Each **cake layer** is its own row (no QTY aggregation)
+- Each **cupcake order** is its own row (not aggregated across orders)
+- Cookies and Pupcakes remain as separate tables below
+- **Other** items (from the Other item type added in Phase 5) appear at the bottom of the page
+
+### 7.2 — Column Structure
+
+| Order # | Size / Qty | Flavor | Day of Week | Complete / Notes |
+|---|---|---|---|---|
+
+- **Order #:** Order number. Will repeat for multi-layer cakes (one row per layer).
+- **Size / Qty:** For cakes: the tier size. For cupcakes: the quantity for that order.
+- **Flavor:** The flavor for that layer/order.
+- **Day of Week:** Full day name (e.g., "Thursday").
+- **Complete / Notes:** Static display text only — not editable, not saved. Pre-populated for special display cases (see 7.4); otherwise empty. Used for the printed sheet only.
+
+### 7.3 — Day of Week Color Highlighting
+
+Background color applied to the Day of Week cell, following the rainbow (ROYGBP):
+
+| Day | Color |
+|---|---|
+| Monday | Red |
+| Tuesday | Orange |
+| Wednesday | Yellow |
+| Thursday | Green |
+| Friday | Blue |
+| Saturday | Purple |
+
+### 7.4 — Special Display Rules
+
+- **Micro cakes:** Display Size as `6"`, pre-populate Complete/Notes with `"Micro"`
+- **Quarter Sheet:** Display Size as `"Half Sheet"`, pre-populate Complete/Notes with `"Cut"`
+- **Quarter Sheet + Half-and-Half:** Display Size as `"Half Sheet"`, pre-populate Complete/Notes with `"Cut twice"`
+
+### 7.5 — Order Number Color Coding
+
+Rows sharing the same Order Number receive a matching light background color on the Order # cell. Each distinct order number gets a unique color (assigned at render time). Orders with only a single row remain default/white.
+
+### 7.6 — Bake Week
+
+The computation window runs **Thursday through Wednesday** (not Monday–Sunday). Prev/Next/This-Week navigation steps by 7 days aligned to this window.
+
+### 7.7 — Print Layout
+
+- Page is compact and prints on a standard 8.5×11 sheet
+- Cakes/cupcakes table displays gridlines (like a spreadsheet)
+- When printing: 100% width, no side margins, only the bake tables print (nav bar and other page chrome suppressed via `@media print`)
+
+---
+
+## Phase 8 — Party Rentals
+
+*Entirely new feature. New backend models, controllers, Angular routes, and management items.*
+
+### 8.1 — Data Model
+
+**`PartyRental` model:**
+- Name, Phone, Email
+- Type (FK to OptionItem — Party Rental Types category)
+- DateOfEvent (DateTime)
+- StartTime, EndTime (TimeSpan or DateTime)
+- NumberOfGuests (int)
+- RoomArrangementId (FK to `RoomArrangement`)
+- BaseRentalRate (decimal — prefilled from management config)
+- AdditionalHours (int)
+- AdditionalHourlyRate (decimal — from management config)
+- Collection of `PartyRentalAddOn`
+
+**`PartyRentalAddOn` model:**
+- AddOnType (FK to OptionItem — Party Rental Add-Ons category)
+- Price (decimal — prefilled from management config, editable)
+- Notes (string)
+
+**`RoomArrangement` model:**
+- Label (string)
+- ImagePath (string — stored like attachments)
+- IsActive (bool)
+
+### 8.2 — Management Items
+
+Add to the Management page:
+- Party Rental Types (option list — same pattern as other dropdowns)
+- Party Rental Add-Ons (option list with configurable default price per item)
+- Base Rental Rate (single configurable numeric value)
+- Additional Hourly Rate (single configurable numeric value)
+- Room Arrangements (image + label — upload image, set label, activate/deactivate)
+
+### 8.3 — Booking Page
+
+New route at `/party-rental/new` (and `/party-rental/:id` for edit).
+
+**Booking Info section:**
+- Name, Phone, Email inputs
+- Type dropdown (from management)
+- Date of Event (date picker)
+- Time of Rental: Start Time + End Time (two time pickers)
+- Number of Guests input
+- Room Arrangement: image tile selector — large radio-button-style tiles with images from management
+
+**Cost section:**
+- Base Rental Rate (prefilled from management, editable)
+- Additional Hours: displayed as `"[$rate] × [____] hours"` (max 2-digit number input)
+
+**Add-Ons section:**
+- "Add Add-On" button — adds a row with: Add-On Type dropdown, Price (prefilled, editable), Notes
+- Same add/remove pattern as order items in the order form
+
+### 8.4 — Google Calendar Integration
+
+Party Rentals appear on Google Calendar at their actual scheduled start time (unlike orders, which stack from midnight — see Phase 10).
+
+### 8.5 — Google Doc Auto-Fill (Wishlist)
+
+When a booking is saved, optionally: copy a master Google Doc template, rename it to `"Name - Date"`, fill in all booking fields, and route for digital signature via Google Workspace tools.
+
+**Prerequisites:** Google Drive API + Google Docs API OAuth scopes; confirm exact template document and field mapping before scoping.
+
+**Scope:** Post-launch only. Build the Party Rentals booking page first (Phase 8.3); Google Doc auto-fill is deferred until feasibility can be confirmed after launch.
+
+---
+
+## Phase 9 — Authentication (Dual Login + PIN + Audit)
+
+### 9.1 — Primary Authentication
+
+- Username/password login via ASP.NET Core Identity + JWT tokens
+- JWT stored as an `HttpOnly` cookie with long expiry — staff stay logged in at the shop without daily re-authentication (similar to YouTube/Facebook session behavior)
+- Login page at `/login`; all API routes protected with `[Authorize]`; Angular route guard on all routes
+- Single shared account is sufficient for launch; data model supports multiple users from day one
+
+### 9.2 — PIN Secondary Login
+
+- After primary auth, a secondary PIN screen is shown
+- Each 4-digit PIN is tied to a named staff member record in the database — this is what makes the audit trail meaningful
+- On inactivity timeout (configurable, default: a few minutes), the app soft-logs-out to the PIN screen — the primary JWT cookie is NOT cleared
+- Any staff member can enter their PIN to resume the session
+- The PIN screen is local-only and does not require re-authentication against the backend
+
+**Staff member management** is handled via a new **"Manage Users"** section on the Management page: a simple list of staff names with an editable PIN field per user. The PIN is explicitly non-secure (no hashing required), so a plain editable field is appropriate.
+
+### 9.3 — Audit Trail
+
+All data modifications (create, update, archive, restore) write to an `AuditLog` table:
+- Staff member (from the active PIN session)
+- Entity type + ID
+- Field changed: from-value → to-value
+- Timestamp
+
+Enables detecting malicious changes and rolling back data entry errors.
+
+### 9.4 — Implementation Notes
+
+- Long-lived `HttpOnly` JWT cookie handles primary auth persistence
+- PIN session state held in memory/sessionStorage — cleared on inactivity
+- Angular inactivity service monitors user activity and redirects to PIN screen on timeout, without clearing the primary auth cookie
+
+---
+
+## Phase 10 — Google Calendar Integration
+
+*Replaces the built-in calendar page. Depends on Phase 5 (Title field for event titles) and Phase 9 (auth for OAuth redirect URI).*
+
+**Prerequisites:** Cloudflare Tunnel + domain live before implementing (OAuth redirect URI must be a public HTTPS URL).
 - Production URL: `https://orders.canonsburgcakecompany.com`
-- OAuth redirect URI will be: `https://orders.canonsburgcakecompany.com/api/google/callback`
+- OAuth redirect URI: `https://orders.canonsburgcakecompany.com/api/google/callback`
 
-**Steps when ready:**
-1. Create a Google Cloud project, enable Calendar API, create OAuth 2.0 Web Application credentials
-2. Add redirect URI above to the OAuth client in Google Cloud Console
-3. Add `Google.Apis.Calendar.v3` NuGet package to backend
-4. Add `GoogleCalendarEventId` field to `Order` model + migration
+### 10.1 — Setup
+
+1. Create Google Cloud project, enable Calendar API, create OAuth 2.0 Web Application credentials
+2. Add redirect URI to OAuth client in Google Cloud Console
+3. Add `Google.Apis.Calendar.v3` NuGet package
+4. Add `GoogleCalendarEventId` field to `Order` + migration
 5. Create `GoogleCalendarService` (token storage, create/update/delete events)
 6. Create `GoogleCalendarController` (`/authorize`, `/callback`, `/status`, `/disconnect`)
-7. Hook into `OrderController` — sync calendar after every create/update/delete
-8. Add connection status indicator to the UI
+7. Hook into `OrderController` — sync after every create, update, and archive
 
-**Event format:**
-- Title: `#1001 — Emily Johnson (Pickup)` or `(Delivery)`
-- Date/time: `OrderDateTime`
-- Description: product summary + notes + delivery address if applicable
-- Store `GoogleCalendarEventId` on the Order for future updates/deletes
+### 10.2 — Event Format
 
----
+- **Title:** `"OrderNumber - Title - FirstName LastName"` (using the new Title field from Phase 5)
+- **Color key:**
+  - Blue = cakes
+  - Purple = cupcakes
+  - Green = completed / ready for pickup
+  - Red = cancelled / archived
+  - Yellow = delivery
+  - Priority when an order has mixed item types: **cakes take priority** over all others. Cupcakes, cookies, and pupcakes all share the same color (Purple) — mixed non-cake orders use Purple.
+- **Timing:** Events do NOT appear at their actual scheduled time. On their due date, events stack starting at **midnight**, in the order they were created (creation timestamp). Each event is 30 minutes long.
+- **Party Room Rentals** (Phase 8) appear at their actual scheduled start time — they are not stacked.
 
-## Phase 4 — Bake Sheet ✅ Completed
+### 10.3 — Calendar Page Removal
 
-*Every Monday the baker needs a calculated list of what to bake for the week.*
-
-**Completed 2026-02-21.** Created `BakeSheetController` (`GET /api/bakesheet?weekOf={date}`) that returns orders in a Monday–Sunday window (defaults to current week) with all navigation properties included. Angular: added `BakeSheetService`, `BakeSheetComponent` at `/bake-sheet`. Shows: orders-this-week list (with clickable order links, product lines per order), and separate grouped totals sections for cakes, cupcakes, cookies, and pupcakes. Prev/Next/This-Week navigation. Print button (window.print()) with `@media print` styles that hide nav controls. Added Bake Sheet nav link and home dashboard card. Both builds pass.
-
-### 4.1 — Bake Sheet Logic ✅
-
-- `GET /api/bakesheet?weekOf={date}` — returns `BakeSheetResponse { weekStart, weekEnd, orders[] }` with all product nav properties included
-- Week = Monday–Sunday; defaults to current week if no `weekOf` param
-- Frontend aggregates totals by product type
-
-### 4.2 — Bake Sheet UI ✅
-
-- Route `/bake-sheet`, nav link, home dashboard card
-- Orders-this-week section + per-product-type totals tables
-- Print-friendly layout (`@media print` hides nav controls, print button)
-
-### 4.3 — Bake Sheet Timing ✅
-
-- Week date range displayed prominently in header (e.g., "Feb 23 – Mar 1, 2026")
+The `/calendar` route and `CalendarComponent` are removed once Google Calendar sync is live. Until then, the built-in calendar page remains as temporary infrastructure.
 
 ---
 
-## Phase 4.5 — Management Page ✅ Completed
+## Phase 11 — Google Maps Integration
 
-**Completed 2026-02-21.** Created `OptionItem` model (Id, Category, Value, IsActive, SortOrder) and `SignatureCupcake` model. Added `SignatureName` to `Cupcake`. Updated `DataContext` with new DbSets. EF migration `AddManagementTables` written manually. Created `OptionController` (CRUD) and `SignatureCupcakeController` (CRUD). Updated `SeedData.cs` to seed 7 option categories and 4 starter signatures on first run. Angular: added `option-item.ts`, `signature-cupcake.ts` models; updated `cupcake.ts` with `signatureName`; created `OptionService`, `SignatureCupcakeService`; created `ManagementComponent` at `/management` with collapsible sections for each option category, signature cupcakes table (inline edit/add/delete), and deleted orders. Order form updated: "Custom Cupcakes" + "Signature Cupcakes" buttons; signature rows have datalist combobox that auto-fills flavor fields on match; all flavor text inputs get `<datalist>` autocomplete; tier size, cake shape, cupcake size, cookie type selects now dynamic from API. "Deleted Orders" nav link replaced with "Management"; `/deleted-orders` route removed. Both builds pass.
+### 11.1 — Address Autocomplete
 
-*Form dropdowns (tier sizes, shapes, flavors, cookie types) are currently hardcoded. Seasonal menus change — the owner needs a way to add, rename, disable, or reorder options without touching code. Also consolidates deleted order recovery and signature cupcake menu management.*
-
-### Confirmed Design Decisions
-
-- All configurable option lists stored in `OptionItems` table: `Id`, `Category`, `Value`, `IsActive`, `SortOrder`
-- `IsActive = false` hides option from new orders; existing orders that used the value are unaffected
-- `CakeFlavor` and `CupcakeFlavor` use the **same** `Flavor` category — one shared list
-- `FillingFlavor` and `IcingFlavor` are also shared across cakes and cupcakes
-- Cookies are included in management (seasonal types come and go)
-- Pupcakes remain hardcoded (stable)
-- **Signature Cupcakes**: separate `SignatureCupcakes` table; `Cupcake` model gets optional `SignatureName` field
-- **Deleted Orders** moved entirely to Management page; `/deleted-orders` route removed from nav
-- Order form: "Custom Cupcakes" button (current behavior) + new "Signature Cupcakes" button (separate row type)
-- Signature rows: combobox auto-fills flavor fields, but fields remain **editable** for modifications (allergy subs, etc.)
-- Flavor fields on signature rows remain visible (so staff can see what's in the cupcake)
-
-### 4.5.1 — Backend
-
-**New model — `OptionItem.cs`:**
-```csharp
-public class OptionItem {
-    [Key] public int Id { get; set; }
-    public string Category { get; set; } = null!;  // see categories below
-    public string Value { get; set; } = null!;
-    public bool IsActive { get; set; } = true;
-    public int SortOrder { get; set; }
-}
-```
-
-**Categories:**
-| Category key | Used in |
-|---|---|
-| `CakeTierSize` | Cake tier size dropdown |
-| `CakeShape` | Cake shape dropdown |
-| `Flavor` | Cake flavor + Cupcake flavor (shared) |
-| `FillingFlavor` | Cake filling + Cupcake filling (shared) |
-| `IcingFlavor` | Cake icing + Cupcake icing (shared) |
-| `CupcakeSize` | Cupcake size dropdown |
-| `CookieType` | Cookie type dropdown (seasonal) |
-
-**New model — `SignatureCupcake.cs`:**
-```csharp
-public class SignatureCupcake {
-    [Key] public int Id { get; set; }
-    public string Name { get; set; } = null!;
-    public string CakeFlavor { get; set; } = null!;
-    public string FillingFlavor { get; set; } = null!;
-    public string IcingFlavor { get; set; } = null!;
-    public bool IsActive { get; set; } = true;
-    public int SortOrder { get; set; }
-}
-```
-
-**Cupcake model change:** Add `public string? SignatureName { get; set; }` (nullable — null = custom cupcake)
-
-**New controllers:**
-- `OptionController`: `GET /api/option`, `GET /api/option/{category}`, `POST /api/option`, `PUT /api/option/{id}`, `DELETE /api/option/{id}`
-- `SignatureCupcakeController`: `GET /api/signaturecupcake`, `POST`, `PUT /{id}`, `DELETE /{id}`
-
-**Seed data:** Populate `OptionItems` with current hardcoded values + initial signature cupcake list.
-
-**EF migration:** Add `OptionItems` and `SignatureCupcakes` tables; add `SignatureName` column to `Cupcakes`.
-
-### 4.5.2 — Order Form Changes
-
-**Cupcake section — two row types:**
-- "Custom Cupcakes" button → adds current-style row (size, qty, cake flavor dropdown, filling dropdown, icing dropdown)
-- "Signature Cupcakes" button → adds signature row:
-  - Combobox (`<input>` + `<datalist>`) for signature name — type to filter, ~50 items
-  - When a signature is selected: auto-fills CakeFlavor, FillingFlavor, IcingFlavor from the signature definition
-  - Flavor fields remain **editable** for modifications
-  - Size and Qty still free inputs
-- Both row types stored in the same `Cupcakes` table; `SignatureName` is set only on signature rows
-
-**Cake section:**
-- `CakeFlavor`, `FillingFlavor`, `IcingFlavor` text inputs → `<select>` dropdowns backed by option lists
-
-**Edge case:** If a loaded order has a value not in the current option list (disabled or deleted), inject it as a selected disabled `<option>` so it survives re-save without data loss.
-
-### 4.5.3 — Management UI (`/management`)
-
-Single scrollable page with collapsible sections (chevron toggle, same pattern as bake sheet):
-
-**Option list sections** (one per category — Flavors, Fillings, Icings, Cake Sizes, Cake Shapes, Cupcake Sizes, Cookie Types):
-- Sorted list of values; each row: value text (click-to-edit inline) | Active toggle | ↑↓ reorder
-- Inactive items shown muted/strikethrough
-- "Add" input at the bottom of each section
-
-**Signature Cupcakes section** (collapsible, same UI as bake sheet "Orders This Week"):
-- Scrollable inline-editable table: Name | Cake Flavor | Filling | Icing | Active
-- Flavor cells use dropdowns backed by option lists
-- "Add row" button at bottom
-
-**Deleted Orders section** (collapsible):
-- Existing deleted-orders table UI moved here
-- Restore button per row
-
-### 4.5.4 — Nav & Home
-
-- Add "Management" to nav; remove "Deleted Orders" from nav
-- Update home dashboard: replace Deleted Orders card with Management card
-- `/deleted-orders` route removed (no redirect needed — it was internal only)
-
----
-
-## Phase 5 — Google Maps Integration
-
-*For delivery orders, the driver needs a clickable maps link.*
-
-### 5.1 — Address Autocomplete
-
-- Add Google Maps Places Autocomplete to the delivery address field in `EditOrderComponent`
-- Use the Angular Google Maps library (`@angular/google-maps`)
+- Add Google Maps Places Autocomplete to the delivery address field
+- Use `@angular/google-maps`
 - Validate and normalize the address on selection
 
-### 5.2 — Maps Link Generation
+### 11.2 — Maps Link Generation
 
-- On save, generate a Google Maps URL for any delivery order:
+- On save, generate a Google Maps URL for delivery orders:
   `https://www.google.com/maps/dir/?api=1&destination=<encoded address>`
-- Store the generated URL on the order (`DeliveryMapsUrl` field)
-- Display as a clickable link on the order form and in the calendar event description (Phase 3.3)
+- Store as `DeliveryMapsUrl` on the order
+- Display as a clickable link in the edit form and in the Google Calendar event description (Phase 10)
 
 ---
 
-## Phase 6 — Historical Order Entry & Bulk Import
+## Phase 12 — Historical Order Bulk Import
 
-*Orders exist going back ~4 years (3000–4000+ records) on paper.*
+*Paper forms scanned to Google Drive as PDFs. Filenames follow the pattern `OrderNumber - LastName FirstName.pdf`. No OCR needed — filename parsing creates a stub order and attaches the scan. Details can be manually filled in for recent orders later.*
 
-### 6.1 — Bulk Import Tool
+### 12.1 — Bulk File Importer
 
-- Design a simple CSV/spreadsheet format for historical order entry
-- Create a `POST /api/order/import` endpoint that accepts a CSV and bulk-inserts orders
-- Validate for duplicate `OrderNumber` before inserting
-- Return a summary report of successes/failures
+> **⚠ Before building:** Audit the actual Google Drive folder to document exact filename patterns and multi-page file conventions before writing the parser.
 
-### 6.2 — Historical Entry UI (Optional)
+**Filename patterns (to be confirmed):**
+- Expected base pattern: `OrderNumber - LastName FirstName.pdf`
+- Known variation exists — exact format to be confirmed before implementing the parser
+- Some orders span multiple pages — determine naming convention for page 2+ files
 
-- Consider a simplified "quick entry" form for historical orders (fewer fields, just the essentials)
-- Or use the existing `EditOrderComponent` with a "historical order" toggle that hides irrelevant fields
+**Backend — `POST /api/order/import-files`:**
+- Accepts a multipart upload of multiple PDF files
+- For each file:
+  - Parse filename to extract `OrderNumber` and customer name (regex TBD after audit)
+  - Create a minimal `Order` with only those two fields; skip all other field validation
+  - Save the file as an `OrderAttachment` on the new order
+  - Flag duplicates in the result — do not silently skip
+- Return: created count, duplicate count, failed (unparseable) count, per-file result list
 
-### 6.3 — Order Number Continuity
+**Frontend — Management page (new collapsible section):**
+- Multi-file picker or folder drag-and-drop
+- Preview table of parsed filenames before submitting (order number, name, filename)
+- Progress indicator during upload
+- Results summary with duplicate and failure details
 
-- Ensure the system can accept any `OrderNumber` (not just auto-incremented from current max)
-- Confirm no gaps break existing numbering logic
+### 12.2 — Order Number Continuity
 
----
-
-## Phase 7 — Authentication
-
-*No auth currently exists. The app will be accessible on a local network — minimal auth is still required.*
-
-### 7.1 — Authentication Strategy
-
-**Recommendation:** Simple username/password with ASP.NET Core Identity + JWT tokens
-
-- Single shared admin account for the shop is acceptable as a starting point
-- Add login page at `/login`
-- Protect all API routes with `[Authorize]`
-- JWT stored in `localStorage` or `sessionStorage` on the frontend
-- Angular route guard on all routes
-
-**Alternative:** Windows Authentication if the shop PC is domain-joined — simpler to set up, no password management needed.
-
-### 7.2 — Role Considerations (Future)
-
-- Baker role: read-only bake sheet access
-- Shop staff: full order CRUD
-- Admin: can delete, view audit logs
+- Historical imports bypass `GetNewOrderNumber()` — use the explicit order number from the filename
+- After import, `GetNewOrderNumber()` (`MAX + 1`) naturally continues from the highest imported number
+- Duplicates are expected to be zero at import time; flag any that occur for manual review
 
 ---
 
-## Phase 8 — Deployment & Hosting
+## Phase 13 — Pricing
 
-*The biggest architectural change. Currently single-machine with no remote access.*
+⚠ **Needs detailed design work before implementation.** Get full pricing requirements from the bakery before building this phase. Configuration, auto-calculation logic, and additional fields are all TBD.
 
-### 8.1 — Database
+Fields identified so far (placeholders added in Phase 5): Labor, Flavor Upgrade, Lookbook Price.
 
-**Decision:** SQLite — switched from SQL Server Express 2026-02-21.
+---
 
-- Zero installation required on shop PC — just a file (`orders.db`) next to the app
-- EF Core Sqlite provider in use; connection string: `Data Source=orders.db`
-- `*.db` files excluded from git via `.gitignore`
-- **TODO (do during this phase):** Add `dbContext.Database.Migrate()` call at startup in `Program.cs` so the database is created/migrated automatically on first run — no manual `dotnet ef database update` step needed on the shop PC
+## Phase 14 — Mobile Optimization
 
-### 8.2 — Backup Strategy
+*Post-launch, after all other features are implemented and stable.*
 
-- Use Windows Task Scheduler to run a nightly PowerShell script that copies `orders.db` (and the `attachments/` folder) to a backup location
-- Example: copy to a network share, a USB drive, or sync to home PC via Tailscale
+Responsive layout improvements for phone and tablet use in the shop. The MVP is explicitly desktop-only; this phase addresses mobile accessibility once the core product is stable.
+
+---
+
+## Phase 15 — Deployment & Hosting
+
+*Phase 9 (Auth) must be complete before go-live.*
+
+### 15.1 — Database
+
+SQLite (`orders.db`). Zero installation on shop PC. `Database.Migrate()` called at startup — DB is auto-created/migrated on first run. `*.db` files excluded from git.
+
+### 15.2 — Backup Strategy
+
+- Windows Task Scheduler: nightly PowerShell script copying `orders.db` and `attachments/` to a backup location
 - Retain last 30 days of daily backups
-- SQLite backup is as simple as `Copy-Item orders.db "backups\orders_$(Get-Date -f yyyyMMdd).db"`
+- Sync to network share, USB drive, or home PC via Tailscale
 
-### 8.3 — Application Deployment
+### 15.3 — Application Deployment
 
-**Architecture decision:** Cloudflare Tunnel + real domain (chosen 2026-02-21)
+**Architecture:** Cloudflare Tunnel + subdomain CNAME
 
 - App runs as a Windows Service on the shop PC (Kestrel on `localhost:5000`)
-- `cloudflared` tunnel on the shop PC routes public traffic to the local port — no open firewall ports needed, works through any ISP/CGNAT
+- `cloudflared` tunnel routes public traffic to the local port — no open firewall ports, works through any ISP/CGNAT
 - Cloudflare handles HTTPS/TLS automatically
 - **Production URL:** `https://orders.canonsburgcakecompany.com`
-- **Subdomain:** confirm final subdomain with bakery owner (placeholder: `orders`)
 
-**Setup steps (one-time, do when ready to go live):**
-1. Create Cloudflare account, add domain, install `cloudflared` on shop PC
-2. `cloudflared tunnel create ccc-inventory`
-3. Configure tunnel to forward to `http://localhost:5000`
-4. Add CNAME record in Cloudflare DNS
-5. Publish .NET app as self-contained `win-x64` Windows Service
-6. Install and start the service with `sc.exe`
+**Notes:**
+- Shop PC not yet purchased
+- Bakery domain is on Squarespace and used by Square and other commerce platforms — do not transfer. Add a CNAME record for the `orders` subdomain in Squarespace DNS pointing to the Cloudflare Tunnel hostname.
 
-**⚠️ Auth (Phase 7) must be implemented before going live** — the site will be publicly accessible.
+**One-time setup:**
+1. Purchase shop PC; install Windows
+2. Create Cloudflare account, install `cloudflared` on shop PC
+3. `cloudflared tunnel create ccc-inventory`
+4. Configure tunnel to forward to `http://localhost:5000`
+5. Add `orders` CNAME in Squarespace DNS
+6. Publish .NET app as self-contained `win-x64` Windows Service
+7. Install and start the service with `sc.exe`
 
-### 8.4 — Dev/Prod Configuration ⏳ TODO
+### 15.4 — Dev/Prod Configuration
 
-- `appsettings.Production.json` for shop PC config (Data Source path, Kestrel port)
+- `appsettings.Production.json` for shop PC (Data Source path, Kestrel port)
 - Frontend `environment.prod.ts`: `apiUrl: '/api'` (already set — app and API served from same origin in production)
-- Angular build for production: `ng build --configuration production`
+- Angular build: `ng build --configuration production`
 
-### 8.5 — Deployment Workflow ⏳ TODO
+### 15.5 — Deployment Workflow
 
 1. Developer commits to `main` on home PC
 2. Shop PC pulls latest (`git pull`)
-3. `deploy.ps1` script: runs `ng build --configuration production`, then `dotnet publish`, copies output, restarts Windows Service
-4. Database auto-migrates on startup (already implemented in `Program.cs`)
+3. `deploy.ps1`: `ng build --configuration production` → `dotnet publish` → copy output → restart Windows Service
+4. Database auto-migrates on startup
 
 ---
 
-## Phase 9 — Polish & Operational Features
+## Phase 16 — Polish
 
 *Nice-to-haves that improve daily usability.*
 
-- **Print order form:** A print-friendly view of a single order that replicates the paper form layout
-- **Order status tracking:** Statuses like Pending, Confirmed, In Progress, Ready, Delivered/Picked Up, Cancelled
+- **Print order form:** Print-friendly view of a single order replicating the paper form layout
 - **Customer history:** View all orders for a given customer by name/email
-- **Notifications:** Email/SMS confirmation to customer when order is saved (SendGrid or Twilio)
-- **Audit log:** Track who changed what and when on each order
 
 ---
 
@@ -447,28 +609,22 @@ Single scrollable page with collapsible sections (chevron toggle, same pattern a
 
 | Priority | Phase | Rationale |
 |---|---|---|
-| 1 | Phase 0 — Tech Refresh ✅ | Must be done first; reduces future debt |
-| 2 | Phase 1 — MVP Hardening ✅ | Core reliability before new features |
-| 3 | Phase 2 — Attachments ✅ | High daily value, self-contained |
-| 4 | Phase 3.1 — Calendar ✅ | High value; bake sheet depends on it |
-| 5 | Phase 4 — Bake Sheet ✅ | High operational value |
-| 6 | Phase 4.5 — Management Page ✅ | Fixes hardcoded dropdowns; unblocks seasonal menu changes |
-| 7 | Phase 8 — Deployment | Needed to get it into the shop |
-| 8 | Phase 7 — Auth | Required before any network exposure |
-| 9 | Phase 5 — Maps | Complements calendar and delivery orders |
-| 10 | Phase 6 — Historical Import | Useful but not blocking daily use |
-| 11 | Phase 9 — Polish | Ongoing |
+| 1 | Phases 0–4.5 ✅ | Done |
+| 2 | Phase 5 — Order Form Overhaul | Core UX; largest immediate need; model changes other phases depend on |
+| 3 | Phase 6 — All Orders & Homepage | Depends on Phase 5 status system |
+| 4 | Phase 7 — Bake Sheet Redesign | Mostly independent; high daily operational value |
+| 5 | Phase 8 — Party Rentals | New independent feature |
+| 6 | Phase 9 — Authentication | Required before deployment; PIN/audit system |
+| 7 | Phase 10 — Google Calendar | Requires live domain (Phase 15 prereq) + Phase 5 Title field |
+| 8 | Phase 11 — Google Maps | Complements delivery orders |
+| 9 | Phase 12 — Historical Import | Useful but not blocking launch |
+| 10 | Phase 13 — Pricing | Needs design work first |
+| 11 | Phase 14 — Mobile Optimization | Post-launch |
+| 12 | Phase 15 — Deployment | After Phase 9 auth |
+| 13 | Phase 16 — Polish | Ongoing |
 
 ---
 
 ## Open Questions
 
-These need answers before specific phases can be fully designed:
-
-1. **Due date vs. order date:** Is `OrderDateTime` the date the order was placed, or when it's due? A separate `DueDate` field is likely needed.
-2. **File storage for attachments:** Local disk on the shop PC is simplest — confirm this is acceptable.
-3. **Google account:** Is there a Google account associated with the bakery that will own the Calendar integration?
-4. **Authentication level:** Is a single shared login acceptable, or do multiple staff members need individual accounts?
-5. **Historical order data:** Is the goal to enter all ~3000+ historical orders, or just recent/relevant ones?
-6. **Network setup:** Does the shop PC have a static local IP or hostname that can be bookmarked?
-7. **Mobile access:** Does the calendar/order form need to work well on mobile (phone/tablet in the shop)?
+1. **Google Calendar event format:** Confirm the exact event title format before implementing Phase 10. Current spec: `"OrderNumber - Title - FirstName LastName"`. Confirm this is correct.
