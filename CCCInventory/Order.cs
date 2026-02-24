@@ -12,25 +12,33 @@ namespace CCCInventory
         public string? CustEmail { get; set; }
         public string? CustPhone { get; set; }
         public string? Details { get; set; }
-        public bool? PickupOrDelivery { get; set; }
+        public string? Title { get; set; }
+        public string? OrderType { get; set; }
         public string? SecondaryName { get; set; }
         public string? SecondaryPhone { get; set; }
         public string? InitialContact { get; set; }
         public bool ContractSent { get; set; }
         public bool DayOfTextSent { get; set; }
         public bool ConfirmationTextSent { get; set; }
+        public bool IsReadyForPickup { get; set; }
+        public bool CancelledFlag { get; set; }
+        public string? CancellationReason { get; set; }
+        public DateTime? CancelledAt { get; set; }
         public List<Cake>? Cakes { get; set; }
         public List<Cupcake>? Cupcakes { get; set; }
         public List<Pupcake>? Pupcakes { get; set; }
         public List<Cookie>? Cookies { get; set; }
+        public List<OtherItem>? OtherItems { get; set; }
         public double? TotalCost { get; set; }
         public double? DepositAmount { get; set; }
+        public double? Labor { get; set; }
+        public double? FlavorUpgrade { get; set; }
+        public double? LookbookPrice { get; set; }
         public string? DepositPaymentMethod { get; set; }
         public DateTime? DepositDateTime { get; set; }
         public string? FinalPaymentMethod { get; set; }
         public DateTime? FinalPaymentDateTime { get; set; }
         public DateTime DateOrderPlaced { get; set; }
         public bool? PaidInFull { get; set; }
-        public bool DeleteFlag { get; set; }
     }
 }

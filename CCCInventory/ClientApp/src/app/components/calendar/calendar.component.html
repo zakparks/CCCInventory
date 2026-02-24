@@ -46,7 +46,7 @@
         <div class="day-number">{{ day.date.getDate() }}</div>
       }
       @for (order of day.orders; track order.orderNumber) {
-        <span class="order-pill" [class.order-delivery]="order.pickupOrDelivery === true"
+        <span class="order-pill" [class.order-delivery]="order.orderType === 'Delivery'"
           (click)="editOrder(order.orderNumber!)" [title]="order.custName + ' \u2014 ' + order.details">
           #{{ order.orderNumber }} {{ order.custName }}
         </span>

@@ -13,5 +13,7 @@ namespace CCCInventory
         public string FillingFlavor { get; set; } = null!;
         public string IcingFlavor { get; set; } = null!;
         public bool SplitTier { get; set; }
+        public string? Flavor2 { get; set; }
+        public string? LayerFlavors { get; set; }
     }
 }

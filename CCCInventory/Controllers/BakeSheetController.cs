@@ -40,7 +40,7 @@ namespace CCCInventory.Controllers
                 .Include(o => o.Cupcakes)
                 .Include(o => o.Cookies)
                 .Include(o => o.Pupcakes)
-                .Where(o => !o.DeleteFlag &&
+                .Where(o => !o.CancelledFlag &&
                             o.OrderDateTime >= monday &&
                             o.OrderDateTime < endOfSunday)
                 .OrderBy(o => o.OrderDateTime)

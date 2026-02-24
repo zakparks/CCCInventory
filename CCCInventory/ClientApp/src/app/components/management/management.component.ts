@@ -4,10 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { OptionItem } from '../../models/option-item';
 import { SignatureCupcake } from '../../models/signature-cupcake';
-import { Order } from '../../models/order';
 import { OptionService } from '../../services/option.service';
 import { SignatureCupcakeService } from '../../services/signature-cupcake.service';
-import { OrderService } from '../../services/order.service';
 
 interface CategorySection {
   key: string;
@@ -107,21 +105,15 @@ export class ManagementComponent implements OnInit {
   sigSortCol: string = 'name';
   sigSortDir: 'asc' | 'desc' = 'asc';
 
-  // Deleted orders
-  deletedExpanded = false;
-  deletedOrders: Order[] = [];
-
   constructor(
     private optionService: OptionService,
     private sigService: SignatureCupcakeService,
-    private orderService: OrderService,
     private router: Router
   ) { }
 
   ngOnInit() {
     this.loadOptions();
     this.loadSignatures();
-    this.loadDeleted();
   }
 
   // ─── Options ─────────────────────────────────────────────────────────────
@@ -285,16 +277,6 @@ export class ManagementComponent implements OnInit {
   toggleSigActive(sig: SignatureCupcake) {
     this.sigService.update(sig.id, { ...sig, isActive: !sig.isActive })
       .subscribe(updated => Object.assign(sig, updated));
-  }
-
-  // ─── Deleted Orders ───────────────────────────────────────────────────────
-
-  loadDeleted() {
-    this.orderService.GetDeletedOrders().subscribe(o => this.deletedOrders = o);
-  }
-
-  restoreOrder(orderNumber: number) {
-    this.orderService.RestoreOrder(orderNumber).subscribe(() => this.loadDeleted());
   }
 
   editOrder(orderNumber: number) {

@@ -6,4 +6,6 @@ export class Cake {
   fillingFlavor: string | undefined;
   icingFlavor: string | undefined;
   splitTier: boolean | undefined;
+  flavor2?: string;
+  layerFlavors?: string;
 }

@@ -17,15 +17,30 @@ namespace CCCInventory.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<List<Order>>> GetOrders()
+        public async Task<ActionResult<List<Order>>> GetOrders([FromQuery] string? status)
         {
-            return Ok(await _context.Orders
-                .Where(order => !order.DeleteFlag)
+            var now = DateTime.Now;
+            var query = _context.Orders
                 .Include(o => o.Cakes)
                 .Include(o => o.Cupcakes)
                 .Include(o => o.Cookies)
                 .Include(o => o.Pupcakes)
-                .ToListAsync());
+                .Include(o => o.OtherItems)
+                .AsQueryable();
+
+            query = (status?.ToLower()) switch
+            {
+                "cancelled"     => query.Where(o => o.CancelledFlag && o.OrderDateTime > now),
+                "archived"      => query.Where(o => o.OrderDateTime <= now),
+                "readyforpickup"=> query.Where(o => o.IsReadyForPickup && !o.CancelledFlag && o.OrderDateTime > now),
+                "incomplete"    => query.Where(o => !o.CancelledFlag && o.OrderDateTime > now
+                                        && (!o.Cakes!.Any() && !o.Cupcakes!.Any() && !o.Cookies!.Any()
+                                            && !o.Pupcakes!.Any() && !o.OtherItems!.Any()
+                                            || o.CustName == null || o.CustPhone == null)),
+                _               => query.Where(o => !o.CancelledFlag && o.OrderDateTime > now)
+            };
+
+            return Ok(await query.ToListAsync());
         }
 
         [HttpGet("{orderNumber:int}")]
@@ -36,6 +51,7 @@ namespace CCCInventory.Controllers
                 .Include(o => o.Cupcakes)
                 .Include(o => o.Cookies)
                 .Include(o => o.Pupcakes)
+                .Include(o => o.OtherItems)
                 .FirstOrDefaultAsync(o => o.OrderNumber == orderNumber);
 
             if (order == null)
@@ -90,16 +106,18 @@ namespace CCCInventory.Controllers
 
             // Delete old child rows directly (bypasses the change tracker — no identity conflict)
             int oNum = order.OrderNumber;
-            await _context.Cakes    .Where(c => EF.Property<int?>(c, "OrderNumber") == oNum).ExecuteDeleteAsync();
-            await _context.Cupcakes .Where(c => EF.Property<int?>(c, "OrderNumber") == oNum).ExecuteDeleteAsync();
-            await _context.Cookies  .Where(c => EF.Property<int?>(c, "OrderNumber") == oNum).ExecuteDeleteAsync();
-            await _context.Pupcakes .Where(c => EF.Property<int?>(c, "OrderNumber") == oNum).ExecuteDeleteAsync();
+            await _context.Cakes      .Where(c => EF.Property<int?>(c, "OrderNumber") == oNum).ExecuteDeleteAsync();
+            await _context.Cupcakes   .Where(c => EF.Property<int?>(c, "OrderNumber") == oNum).ExecuteDeleteAsync();
+            await _context.Cookies    .Where(c => EF.Property<int?>(c, "OrderNumber") == oNum).ExecuteDeleteAsync();
+            await _context.Pupcakes   .Where(c => EF.Property<int?>(c, "OrderNumber") == oNum).ExecuteDeleteAsync();
+            await _context.OtherItems .Where(c => EF.Property<int?>(c, "OrderNumber") == oNum).ExecuteDeleteAsync();
 
             // Assign incoming collections — reset Ids to 0 so EF generates new primary keys
-            dbOrder.Cakes    = order.Cakes?   .Select(c => { c.Id = 0; return c; }).ToList();
-            dbOrder.Cupcakes = order.Cupcakes?.Select(c => { c.Id = 0; return c; }).ToList();
-            dbOrder.Cookies  = order.Cookies? .Select(c => { c.Id = 0; return c; }).ToList();
-            dbOrder.Pupcakes = order.Pupcakes?.Select(c => { c.Id = 0; return c; }).ToList();
+            dbOrder.Cakes      = order.Cakes?      .Select(c => { c.Id = 0; return c; }).ToList();
+            dbOrder.Cupcakes   = order.Cupcakes?   .Select(c => { c.Id = 0; return c; }).ToList();
+            dbOrder.Cookies    = order.Cookies?    .Select(c => { c.Id = 0; return c; }).ToList();
+            dbOrder.Pupcakes   = order.Pupcakes?   .Select(c => { c.Id = 0; return c; }).ToList();
+            dbOrder.OtherItems = order.OtherItems? .Select(c => { c.Id = 0; return c; }).ToList();
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
@@ -107,16 +125,32 @@ namespace CCCInventory.Controllers
             return Ok(order.OrderNumber);
         }
 
-        [HttpGet("deleted")]
-        public async Task<ActionResult<List<Order>>> GetDeletedOrders()
+        [HttpGet("cancelled")]
+        public async Task<ActionResult<List<Order>>> GetCancelledOrders()
         {
+            var now = DateTime.Now;
             return Ok(await _context.Orders
-                .Where(order => order.DeleteFlag)
+                .Where(order => order.CancelledFlag && order.OrderDateTime > now)
                 .Include(o => o.Cakes)
                 .Include(o => o.Cupcakes)
                 .Include(o => o.Cookies)
                 .Include(o => o.Pupcakes)
+                .Include(o => o.OtherItems)
                 .ToListAsync());
+        }
+
+        [HttpPut("{orderNumber:int}/cancel")]
+        public async Task<ActionResult<int>> CancelOrder(int orderNumber, [FromBody] CancelOrderRequest request)
+        {
+            var dbOrder = await _context.Orders.FindAsync(orderNumber);
+            if (dbOrder == null)
+                return NotFound($"Order {orderNumber} not found");
+
+            dbOrder.CancelledFlag = true;
+            dbOrder.CancellationReason = request.CancellationReason;
+            dbOrder.CancelledAt = DateTime.Now;
+            await _context.SaveChangesAsync();
+            return Ok(orderNumber);
         }
 
         [HttpPut("{orderNumber:int}/restore")]
@@ -126,7 +160,9 @@ namespace CCCInventory.Controllers
             if (dbOrder == null)
                 return NotFound($"Order {orderNumber} not found");
 
-            dbOrder.DeleteFlag = false;
+            dbOrder.CancelledFlag = false;
+            dbOrder.CancellationReason = null;
+            dbOrder.CancelledAt = null;
             await _context.SaveChangesAsync();
             return Ok(orderNumber);
         }
@@ -138,7 +174,7 @@ namespace CCCInventory.Controllers
             if (dbOrder == null)
                 return NotFound($"Order {orderNumber} not found");
 
-            // Hard delete — soft delete is handled via PUT with DeleteFlag = true
+            // Hard delete — permanent removal
             _context.Orders.Remove(dbOrder);
             await _context.SaveChangesAsync();
 
@@ -148,5 +184,10 @@ namespace CCCInventory.Controllers
         private static bool IsNavigationCollection(PropertyInfo p) =>
             p.PropertyType.IsGenericType &&
             p.PropertyType.GetGenericTypeDefinition() == typeof(List<>);
+    }
+
+    public class CancelOrderRequest
+    {
+        public string? CancellationReason { get; set; }
     }
 }

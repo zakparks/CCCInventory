@@ -16,5 +16,6 @@ namespace CCCInventory.Data
         public DbSet<OrderAttachment> OrderAttachments => Set<OrderAttachment>();
         public DbSet<OptionItem> OptionItems => Set<OptionItem>();
         public DbSet<SignatureCupcake> SignatureCupcakes => Set<SignatureCupcake>();
+        public DbSet<OtherItem> OtherItems => Set<OtherItem>();
     }
 }

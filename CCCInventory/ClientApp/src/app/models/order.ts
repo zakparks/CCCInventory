@@ -1,6 +1,7 @@
 import { Cake } from "./cake";
 import { Cookie } from "./cookie";
 import { Cupcake } from "./cupcake";
+import { OtherItem } from "./other-item";
 import { Pupcake } from "./pupcake";
 
 export class Order {
@@ -11,7 +12,7 @@ export class Order {
   custEmail?: string | undefined;
   custPhone: string | undefined;
   details: string | undefined;
-  pickupOrDelivery: boolean | undefined;
+  orderType?: string;
   secondaryName?: string;
   secondaryPhone?: string;
   initialContact?: string;
@@ -22,6 +23,7 @@ export class Order {
   cupcakes?: Array<Cupcake>;
   pupcakes?: Array<Pupcake>;
   cookies?: Array<Cookie>;
+  otherItems?: Array<OtherItem>;
   totalCost?: number;
   depositAmount?: number;
   depositPaymentMethod?: string;
@@ -30,5 +32,12 @@ export class Order {
   finalPaymentDateTime?: Date;
   dateOrderPlaced: Date | undefined;
   paidInFull?: boolean | undefined;
-  deleteFlag?: boolean | false;
+  cancelledFlag?: boolean | false;
+  title?: string;
+  cancellationReason?: string;
+  cancelledAt?: Date;
+  isReadyForPickup?: boolean;
+  labor?: number;
+  flavorUpgrade?: number;
+  lookbookPrice?: number;
 }

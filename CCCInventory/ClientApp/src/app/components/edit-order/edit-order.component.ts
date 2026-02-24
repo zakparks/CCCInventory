@@ -1,8 +1,10 @@
-import { Component, OnInit, Renderer2, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, Renderer2, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormGroup, FormBuilder, Validators, AbstractControl, FormArray } from '@angular/forms';
+import { ReactiveFormsModule, FormsModule, FormGroup, FormBuilder, Validators, AbstractControl, FormArray } from '@angular/forms';
 import { RouterModule, ActivatedRoute, NavigationExtras, Router } from '@angular/router';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
+import { Subject } from 'rxjs';
+import { debounceTime, filter, takeUntil, switchMap } from 'rxjs/operators';
 import { Order } from '../../models/order';
 import { OrderAttachment } from '../../models/order-attachment';
 import { SignatureCupcake } from '../../models/signature-cupcake';
@@ -10,16 +12,14 @@ import { OrderService } from '../../services/order.service';
 import { AttachmentService } from '../../services/attachment.service';
 import { OptionService } from '../../services/option.service';
 import { SignatureCupcakeService } from '../../services/signature-cupcake.service';
-import { switchMap } from 'rxjs/operators';
 
 @Component({
   selector: 'app-edit-order-component',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, NgbModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, NgbModule],
   templateUrl: './edit-order.component.html'
 })
-
-export class EditOrderComponent implements OnInit {
+export class EditOrderComponent implements OnInit, OnDestroy {
   attachments: OrderAttachment[] = [];
 
   // Option lists loaded from API
@@ -30,7 +30,67 @@ export class EditOrderComponent implements OnInit {
   icingFlavors: string[] = [];
   cupcakeSizes: string[] = [];
   cookieTypes: string[] = [];
+  cookieSizes: string[] = [];
   signatures: SignatureCupcake[] = [];
+
+  // Archive modal state
+  showArchiveModal: boolean = false;
+  archiveCancellationReason: string = '';
+
+  // used to decide which CRUD buttons to show
+  public createOrUpdate: string = "Create";
+
+  // handle the form submit depending on which button was clicked
+  public action: string = 'none';
+
+  // main order object
+  public orderToEdit: Order = new Order();
+
+  // toggles for showing/hiding details headers
+  isCakeDetailsHeaderShown: boolean = false;
+  isCupcakeDetailsHeaderShown: boolean = false;
+  isPupcakeDetailsHeaderShown: boolean = false;
+  isCookieDetailsHeaderShown: boolean = false;
+  isOtherDetailsHeaderShown: boolean = false;
+
+  private destroy$ = new Subject<void>();
+
+  // main form group
+  editOrderFormGroup: FormGroup = this._formBuilder.group({
+    orderNumber: ['', Validators.required],
+    orderDate: ['', Validators.required],
+    orderTime: [''],
+    deliveryLocation: [''],
+    custName: ['', Validators.required],
+    custEmail: [''],
+    custPhone: ['', Validators.required],
+    details: [''],
+    orderType: [''],
+    title: [''],
+    secondaryName: [''],
+    secondaryPhone: [''],
+    initialContact: [''],
+    contractSent: [''],
+    dayOfTextSent: [''],
+    confirmationTextSent: [''],
+    isReadyForPickup: [false],
+    totalCost: [''],
+    depositAmount: [''],
+    depositPaymentMethod: [''],
+    depositDateTime: [''],
+    finalPaymentMethod: [''],
+    finalPaymentDateTime: [''],
+    dateOrderPlaced: ['', Validators.required],
+    paidInFull: [''],
+    labor: [''],
+    flavorUpgrade: [''],
+    lookbookPrice: [''],
+    cakeTierInfo: this._formBuilder.array([]),
+    cupcakeInfo: this._formBuilder.array([]),
+    pupcakeInfo: this._formBuilder.array([]),
+    cookieInfo: this._formBuilder.array([]),
+    otherItemInfo: this._formBuilder.array([])
+  });
 
   constructor(
     private _formBuilder: FormBuilder,
@@ -49,64 +109,16 @@ export class EditOrderComponent implements OnInit {
     return this.createOrUpdate === 'Update' ? this.signatures : this.signatures.filter(s => s.isActive);
   }
 
-  // used to decide which CRUD buttons to show
-  public createOrUpdate: string = "Create";
-
-  // handle the form submit depending on which button was clicked
-  public action: string = 'none';
-
-  // main order object
-  public orderToEdit: Order = new Order();
-
-  // toggles for showing/hiding details headers
-  isCakeDetailsHeaderShown: boolean = false;
-  isCupcakeDetailsHeaderShown: boolean = false;
-  isPupcakeDetailsHeaderShown: boolean = false;
-  isCookieDetailsHeaderShown: boolean = false;
-
-  // main form group
-  editOrderFormGroup: FormGroup = this._formBuilder.group({
-    orderNumber: ['', Validators.required],
-    orderDateTime: ['', Validators.required],
-    deliveryLocation: [''],
-    custName: ['', Validators.required],
-    custEmail: [''],
-    custPhone: ['', Validators.required],
-    details: [''],
-    pickupOrDelivery: [''],
-    secondaryName: [''],
-    secondaryPhone: [''],
-    initialContact: [''],
-    contractSent: [''],
-    dayOfTextSent: [''],
-    confirmationTextSent: [''],
-    cakes: [''],
-    cupcakes: [''],
-    pupcakes: [''],
-    cookies: [''],
-    totalCost: [''],
-    depositAmount: [''],
-    depositPaymentMethod: [''],
-    depositDateTime: [''],
-    finalPaymentMethod: [''],
-    finalPaymentDateTime: [''],
-    dateOrderPlaced: ['', Validators.required],
-    paidInFull: [''],
-    cakeTierInfo: this._formBuilder.array([]),
-    cupcakeInfo: this._formBuilder.array([]),
-    pupcakeInfo: this._formBuilder.array([]),
-    cookieInfo: this._formBuilder.array([])
-  });
-
   ngOnInit() {
     this.optionService.getAll().subscribe(items => {
-      this.cakeTierSizes = items.filter(i => i.category === 'CakeTierSize' && i.isActive).map(i => i.value);
-      this.cakeShapes    = items.filter(i => i.category === 'CakeShape'    && i.isActive).map(i => i.value);
-      this.flavors       = items.filter(i => i.category === 'Flavor'       && i.isActive).map(i => i.value);
-      this.fillingFlavors= items.filter(i => i.category === 'FillingFlavor'&& i.isActive).map(i => i.value);
-      this.icingFlavors  = items.filter(i => i.category === 'IcingFlavor'  && i.isActive).map(i => i.value);
-      this.cupcakeSizes  = items.filter(i => i.category === 'CupcakeSize'  && i.isActive).map(i => i.value);
-      this.cookieTypes   = items.filter(i => i.category === 'CookieType'   && i.isActive).map(i => i.value);
+      this.cakeTierSizes  = items.filter(i => i.category === 'CakeTierSize'  && i.isActive).map(i => i.value);
+      this.cakeShapes     = items.filter(i => i.category === 'CakeShape'     && i.isActive).map(i => i.value);
+      this.flavors        = items.filter(i => i.category === 'Flavor'        && i.isActive).map(i => i.value);
+      this.fillingFlavors = items.filter(i => i.category === 'FillingFlavor' && i.isActive).map(i => i.value);
+      this.icingFlavors   = items.filter(i => i.category === 'IcingFlavor'   && i.isActive).map(i => i.value);
+      this.cupcakeSizes   = items.filter(i => i.category === 'CupcakeSize'   && i.isActive).map(i => i.value);
+      this.cookieTypes    = items.filter(i => i.category === 'CookieType'    && i.isActive).map(i => i.value);
+      this.cookieSizes    = items.filter(i => i.category === 'CookieSize'    && i.isActive).map(i => i.value);
     });
     this.sigService.getAll().subscribe(sigs => {
       this.signatures = sigs;
@@ -119,13 +131,15 @@ export class EditOrderComponent implements OnInit {
           return this.orderService.GetOrder(params["orderNumber"]);
         } else {
           this.createOrUpdate = "Create";
+          this.orderToEdit = new Order();
           return this.orderService.GetNewOrderNumber();
         }
-      })
+      }),
+      takeUntil(this.destroy$)
     ).subscribe(result => {
       if (typeof result === 'number') {
         this.orderToEdit = {
-          ...this.orderToEdit,
+          ...new Order(),
           orderNumber: result,
           dateOrderPlaced: new Date()
         };
@@ -135,24 +149,62 @@ export class EditOrderComponent implements OnInit {
       }
       this.initOrderFormGroup();
     });
+
+    // Autosave: save after 4 seconds of inactivity when any meaningful field has data
+    this.editOrderFormGroup.valueChanges.pipe(
+      debounceTime(4000),
+      filter(val => {
+        const { orderNumber, dateOrderPlaced, ...rest } = val;
+        return Object.values(rest).some(v =>
+          v !== null && v !== '' && v !== false && v !== undefined &&
+          !(Array.isArray(v) && (v as any[]).length === 0)
+        );
+      }),
+      takeUntil(this.destroy$)
+    ).subscribe(() => this.autoSave());
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   initOrderFormGroup() {
+    // Clear all FormArrays to prevent stale rows when switching between orders
+    (this.editOrderFormGroup.get('cakeTierInfo') as FormArray).clear();
+    (this.editOrderFormGroup.get('cupcakeInfo') as FormArray).clear();
+    (this.editOrderFormGroup.get('pupcakeInfo') as FormArray).clear();
+    (this.editOrderFormGroup.get('cookieInfo') as FormArray).clear();
+    (this.editOrderFormGroup.get('otherItemInfo') as FormArray).clear();
+
+    this.isCakeDetailsHeaderShown = false;
+    this.isCupcakeDetailsHeaderShown = false;
+    this.isPupcakeDetailsHeaderShown = false;
+    this.isCookieDetailsHeaderShown = false;
+    this.isOtherDetailsHeaderShown = false;
+
+    const dt = this.orderToEdit.orderDateTime ? new Date(this.orderToEdit.orderDateTime) : null;
+    const orderDate = dt ? this.formatDate(dt) : '';
+    const orderTime = dt ? this.formatTime(dt) : '';
+
     this.editOrderFormGroup.patchValue({
       orderNumber: this.orderToEdit.orderNumber,
-      orderDateTime: this.orderToEdit.orderDateTime,
+      orderDate,
+      orderTime,
       deliveryLocation: this.orderToEdit.deliveryLocation,
       custName: this.orderToEdit.custName,
       custEmail: this.orderToEdit.custEmail,
       custPhone: this.orderToEdit.custPhone,
       details: this.orderToEdit.details,
-      pickupOrDelivery: this.orderToEdit.pickupOrDelivery,
+      orderType: this.orderToEdit.orderType,
+      title: this.orderToEdit.title,
       secondaryName: this.orderToEdit.secondaryName,
       secondaryPhone: this.orderToEdit.secondaryPhone,
       initialContact: this.orderToEdit.initialContact,
       contractSent: this.orderToEdit.contractSent,
       dayOfTextSent: this.orderToEdit.dayOfTextSent,
       confirmationTextSent: this.orderToEdit.confirmationTextSent,
+      isReadyForPickup: this.orderToEdit.isReadyForPickup ?? false,
       totalCost: this.orderToEdit.totalCost,
       depositAmount: this.orderToEdit.depositAmount,
       depositPaymentMethod: this.orderToEdit.depositPaymentMethod,
@@ -160,7 +212,10 @@ export class EditOrderComponent implements OnInit {
       finalPaymentMethod: this.orderToEdit.finalPaymentMethod,
       finalPaymentDateTime: this.orderToEdit.finalPaymentDateTime,
       dateOrderPlaced: this.formatDate(this.orderToEdit.dateOrderPlaced!),
-      paidInFull: this.orderToEdit.paidInFull
+      paidInFull: this.orderToEdit.paidInFull,
+      labor: this.orderToEdit.labor,
+      flavorUpgrade: this.orderToEdit.flavorUpgrade,
+      lookbookPrice: this.orderToEdit.lookbookPrice
     });
 
     const cakeTierInfo = this.editOrderFormGroup.get('cakeTierInfo') as FormArray;
@@ -172,9 +227,13 @@ export class EditOrderComponent implements OnInit {
         cakeFlavor: [cake.cakeFlavor],
         fillingFlavor: [cake.fillingFlavor],
         icingFlavor: [cake.icingFlavor],
-        splitTier: [cake.splitTier]
+        splitTier: [cake.splitTier ?? false],
+        flavor2: [cake.flavor2 ?? ''],
+        useLayerFlavors: [!!cake.layerFlavors],
+        layerFlavors: [cake.layerFlavors ?? '']
       }));
     });
+    if (cakeTierInfo.length > 0) this.isCakeDetailsHeaderShown = true;
 
     const cupcakeInfo = this.editOrderFormGroup.get('cupcakeInfo') as FormArray;
     this.orderToEdit.cupcakes?.forEach(cupcake => {
@@ -184,9 +243,11 @@ export class EditOrderComponent implements OnInit {
         cupcakeFlavor: [cupcake.cupcakeFlavor],
         fillingFlavor: [cupcake.fillingFlavor],
         icingFlavor: [cupcake.icingFlavor],
-        signatureName: [cupcake.signatureName]
+        signatureName: [cupcake.signatureName],
+        isSignature: [!!cupcake.signatureName]
       }));
     });
+    if (cupcakeInfo.length > 0) this.isCupcakeDetailsHeaderShown = true;
 
     const pupcakeInfo = this.editOrderFormGroup.get('pupcakeInfo') as FormArray;
     this.orderToEdit.pupcakes?.forEach(pupcake => {
@@ -195,14 +256,26 @@ export class EditOrderComponent implements OnInit {
         pupcakeQuantity: [pupcake.pupcakeQuantity]
       }));
     });
+    if (pupcakeInfo.length > 0) this.isPupcakeDetailsHeaderShown = true;
 
     const cookieInfo = this.editOrderFormGroup.get('cookieInfo') as FormArray;
     this.orderToEdit.cookies?.forEach(cookie => {
       cookieInfo.push(this._formBuilder.group({
         cookieType: [cookie.cookieType],
-        cookieQuantity: [cookie.cookieQuantity]
+        cookieQuantity: [cookie.cookieQuantity],
+        cookieSize: [cookie.cookieSize ?? '']
       }));
     });
+    if (cookieInfo.length > 0) this.isCookieDetailsHeaderShown = true;
+
+    const otherItemInfo = this.editOrderFormGroup.get('otherItemInfo') as FormArray;
+    this.orderToEdit.otherItems?.forEach(item => {
+      otherItemInfo.push(this._formBuilder.group({
+        name: [item.name ?? ''],
+        item: [item.item ?? '']
+      }));
+    });
+    if (otherItemInfo.length > 0) this.isOtherDetailsHeaderShown = true;
   }
 
   // format date to yyyy-mm-dd
@@ -212,20 +285,52 @@ export class EditOrderComponent implements OnInit {
     var day = '' + d.getDate();
     var year = d.getFullYear();
 
-    if (month.length < 2)
-      month = '0' + month;
-    if (day.length < 2)
-      day = '0' + day;
+    if (month.length < 2) month = '0' + month;
+    if (day.length < 2) day = '0' + day;
 
     return [year, month, day].join('-');
+  }
+
+  // format time to HH:mm
+  formatTime(date: Date): string {
+    const d = new Date(date);
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  }
+
+  // Combine separate date and time controls into a Date
+  combineDateAndTime(): Date | undefined {
+    const dateStr = this.editOrderFormGroup.get('orderDate')?.value;
+    const timeStr = this.editOrderFormGroup.get('orderTime')?.value;
+    if (!dateStr) return undefined;
+    const combined = timeStr ? `${dateStr}T${timeStr}` : `${dateStr}T00:00`;
+    return new Date(combined);
+  }
+
+  // Build Order from form values (shared by create/update/autoSave)
+  buildOrderFromForm(): Order {
+    const { cakeTierInfo, cupcakeInfo, pupcakeInfo, cookieInfo, otherItemInfo, orderDate, orderTime, ...formValue } = this.editOrderFormGroup.value;
+    return {
+      ...formValue,
+      orderDateTime: this.combineDateAndTime(),
+      cakes: cakeTierInfo,
+      cupcakes: cupcakeInfo,
+      pupcakes: pupcakeInfo,
+      cookies: cookieInfo,
+      otherItems: otherItemInfo,
+      cancelledFlag: this.orderToEdit.cancelledFlag,
+      cancellationReason: this.orderToEdit.cancellationReason,
+      cancelledAt: this.orderToEdit.cancelledAt
+    };
   }
 
   // format input as telephone number as it is typed
   onTelInput(event: Event, controlName: string) {
     const input = event.target as HTMLInputElement;
-    let val = input.value.replace(/\D/g, ''); // remove all non-numerics
+    let val = input.value.replace(/\D/g, '');
     if (val.length < 9 && val !== null) {
-      let finalVal = val!.match(/.{1,3}/g)!.join('-'); // add dash (-) after every 3rd char.
+      let finalVal = val!.match(/.{1,3}/g)!.join('-');
       this.editOrderFormGroup.controls[controlName].setValue(finalVal);
     }
   }
@@ -243,57 +348,72 @@ export class EditOrderComponent implements OnInit {
 
   updateOrder() {
     if (this.editOrderFormGroup.valid) {
-      const { cakeTierInfo, cupcakeInfo, pupcakeInfo, cookieInfo, ...formValue } = this.editOrderFormGroup.value;
-
-      this.orderToEdit = {
-        ...formValue,
-        cakes: cakeTierInfo,
-        cupcakes: cupcakeInfo,
-        pupcakes: pupcakeInfo,
-        cookies: cookieInfo
-      };
-
+      this.orderToEdit = this.buildOrderFromForm();
       this.orderService
         .UpdateOrder(this.orderToEdit)
-        .subscribe((result: number) => {
-          if (result === this.orderToEdit.orderNumber) {
-            this.onSubmitSuccess(`Order ${this.orderToEdit.orderNumber} updated.`);
-          }
-        },
-          error => {
-            const errorMessage = Object.values(error.error.errors).join('\n');
+        .subscribe({
+          next: (result: number) => {
+            if (result === this.orderToEdit.orderNumber) {
+              this.onSubmitSuccess(`Order ${this.orderToEdit.orderNumber} updated.`);
+            }
+          },
+          error: (err: any) => {
+            const errorMessage = Object.values(err.error.errors).join('\n');
             this.toastFailure(errorMessage);
-        }
-      );
+          }
+        });
     } else {
       const invalidControlsString = this.getInvalidControlLabels();
       this.toastFailure(`Please check the form for missing information: ${invalidControlsString}`);
     }
   }
 
-  onDeleteOrderClicked() {
-    this.action = 'delete';
+  // Archive (soft-cancel) flow
+  openArchiveModal() {
+    this.archiveCancellationReason = '';
+    this.showArchiveModal = true;
   }
 
-  deleteOrder() {
-    this.orderToEdit.deleteFlag = true;
-    this.orderService
-      .UpdateOrder(this.orderToEdit)
-      .subscribe((result: number) => {
-        if (result === this.orderToEdit.orderNumber) {
-          this.onSubmitSuccess(`Order ${this.orderToEdit.orderNumber} marked as deleted.`);
+  confirmArchive() {
+    if (!this.archiveCancellationReason.trim()) {
+      this.toastFailure('Cancellation reason is required.');
+      return;
+    }
+    this.orderService.CancelOrder(this.orderToEdit.orderNumber!, this.archiveCancellationReason)
+      .subscribe({
+        next: () => {
+          this.showArchiveModal = false;
+          this.onSubmitSuccess(`Order ${this.orderToEdit.orderNumber} archived.`);
+        },
+        error: (err: any) => {
+          const msg = err.error?.message ?? err.message ?? 'Archive failed.';
+          this.toastFailure(msg);
         }
-      },
-        error => {
-          const errorMessage = error.error ? error.error.message : error.message;
-          this.toastFailure(errorMessage);
-      }
-    );
+      });
+  }
+
+  cancelArchiveModal() {
+    this.showArchiveModal = false;
+    this.archiveCancellationReason = '';
   }
 
   restoreOrder() {
+    // Prepend original cancellation info to the Details field before restoring
+    const currentDetails = this.editOrderFormGroup.get('details')?.value ?? '';
+    const timestamp = this.orderToEdit.cancelledAt
+      ? new Date(this.orderToEdit.cancelledAt).toLocaleString()
+      : 'Unknown';
+    const reason = this.orderToEdit.cancellationReason ?? '';
+    const prefix = `Original Cancellation Reason - ${timestamp} - ${reason}\n\n`;
+    this.editOrderFormGroup.get('details')?.setValue(prefix + currentDetails, { emitEvent: false });
+
     this.orderService.RestoreOrder(this.orderToEdit.orderNumber!).subscribe(() => {
-      this.orderToEdit = { ...this.orderToEdit, deleteFlag: false };
+      this.orderToEdit = {
+        ...this.orderToEdit,
+        cancelledFlag: false,
+        cancellationReason: undefined,
+        cancelledAt: undefined
+      };
       this.toastSuccess(`Order ${this.orderToEdit.orderNumber} restored.`);
     });
   }
@@ -304,31 +424,39 @@ export class EditOrderComponent implements OnInit {
 
   createOrder() {
     if (this.editOrderFormGroup.valid) {
-      // Assemble form values the same way updateOrder does
-      const { cakeTierInfo, cupcakeInfo, pupcakeInfo, cookieInfo, ...formValue } = this.editOrderFormGroup.value;
-      this.orderToEdit = {
-        ...formValue,
-        cakes: cakeTierInfo,
-        cupcakes: cupcakeInfo,
-        pupcakes: pupcakeInfo,
-        cookies: cookieInfo
-      };
-
+      this.orderToEdit = this.buildOrderFromForm();
       this.orderService
         .AddOrder(this.orderToEdit)
-        .subscribe((result: number) => {
-          // Use the server-assigned order number, not the pre-filled estimate
-          this.orderToEdit = { ...this.orderToEdit, orderNumber: result };
-          this.onSubmitSuccess(`Order ${result} created.`);
-        },
-          error => {
-            const errorMessage = error.error ? error.error.message : error.message;
+        .subscribe({
+          next: (result: number) => {
+            this.orderToEdit = { ...this.orderToEdit, orderNumber: result };
+            this.onSubmitSuccess(`Order ${result} created.`);
+          },
+          error: (err: any) => {
+            const errorMessage = err.error ? err.error.message : err.message;
             this.toastFailure(errorMessage);
           }
-        );
+        });
     } else {
       const invalidControlsString = this.getInvalidControlLabels();
       this.toastFailure(`Please check the form for missing information: ${invalidControlsString}`);
+    }
+  }
+
+  autoSave() {
+    const order = this.buildOrderFromForm();
+    if (this.createOrUpdate === 'Create') {
+      this.orderService.AddOrder(order).subscribe((result: number) => {
+        this.createOrUpdate = 'Update';
+        this.editOrderFormGroup.get('orderNumber')?.setValue(result, { emitEvent: false });
+        this.orderToEdit = { ...order, orderNumber: result };
+        this.loadAttachments(result);
+        this.toastSuccess(`Order ${result} auto-saved.`);
+      });
+    } else {
+      this.orderService.UpdateOrder(order).subscribe(() => {
+        this.toastSuccess(`Order ${order.orderNumber} auto-saved.`);
+      });
     }
   }
 
@@ -340,21 +468,14 @@ export class EditOrderComponent implements OnInit {
       case 'update':
         this.updateOrder();
         break;
-      case 'delete':
-        this.deleteOrder();
-        break;
     }
   }
 
   onSubmitSuccess(message: string) {
     this.toastSuccess(message);
-
     let navDetails: NavigationExtras = {
-      queryParams: {
-        orderNumber: this.orderToEdit.orderNumber
-      }
+      queryParams: { orderNumber: this.orderToEdit.orderNumber }
     };
-
     this.router.navigate(["edit-order"], navDetails);
   }
 
@@ -375,8 +496,8 @@ export class EditOrderComponent implements OnInit {
           control.controls.forEach((groupControl: AbstractControl, index: number) => {
             const group = groupControl as FormGroup;
             Object.keys(group.controls).forEach(groupControlName => {
-              const groupControl = group.controls[groupControlName];
-              if (groupControl.invalid) {
+              const gc = group.controls[groupControlName];
+              if (gc.invalid) {
                 const label = document.querySelector(`label[for="#${groupControlName}${index}"]`);
                 if (label) {
                   invalidControlLabels.push(`${label.textContent?.trim() || groupControlName} (row ${index + 1})`);
@@ -435,7 +556,7 @@ export class EditOrderComponent implements OnInit {
     this.attachmentService.UploadFiles(this.orderToEdit.orderNumber!, files).subscribe({
       next: newAttachments => {
         this.attachments = [...this.attachments, ...newAttachments];
-        input.value = ''; // reset so same file can be re-uploaded if needed
+        input.value = '';
         this.toastSuccess(`${newAttachments.length} file(s) uploaded.`);
       },
       error: err => {
@@ -462,10 +583,18 @@ export class EditOrderComponent implements OnInit {
     formArray.push(this._formBuilder.group(formGroup.controls));
 
     switch (formGroupName) {
-      case 'cakeTierInfo': this.isCakeDetailsHeaderShown = true; break;
+      case 'cakeTierInfo':
+        this.isCakeDetailsHeaderShown = true;
+        // Auto-append a cake note label to the details field
+        const letter = 'ABCDEFGHIJ'[formArray.length - 1] ?? formArray.length.toString();
+        const currentDetails = this.editOrderFormGroup.get('details')?.value ?? '';
+        const newNote = currentDetails ? `${currentDetails}\nCake ${letter} - ` : `Cake ${letter} - `;
+        this.editOrderFormGroup.get('details')?.setValue(newNote, { emitEvent: false });
+        break;
       case 'cupcakeInfo': this.isCupcakeDetailsHeaderShown = true; break;
       case 'pupcakeInfo': this.isPupcakeDetailsHeaderShown = true; break;
       case 'cookieInfo': this.isCookieDetailsHeaderShown = true; break;
+      case 'otherItemInfo': this.isOtherDetailsHeaderShown = true; break;
     }
   }
 
@@ -479,6 +608,7 @@ export class EditOrderComponent implements OnInit {
         case 'cupcakeInfo': this.isCupcakeDetailsHeaderShown = false; break;
         case 'pupcakeInfo': this.isPupcakeDetailsHeaderShown = false; break;
         case 'cookieInfo': this.isCookieDetailsHeaderShown = false; break;
+        case 'otherItemInfo': this.isOtherDetailsHeaderShown = false; break;
       }
     }
   }
@@ -495,7 +625,10 @@ export class EditOrderComponent implements OnInit {
       cakeFlavor: ['', Validators.required],
       fillingFlavor: ['', Validators.required],
       icingFlavor: ['', Validators.required],
-      splitTier: [false]
+      splitTier: [false],
+      flavor2: [''],
+      useLayerFlavors: [false],
+      layerFlavors: ['']
     });
   }
 
@@ -506,7 +639,8 @@ export class EditOrderComponent implements OnInit {
       cupcakeFlavor: ['', Validators.required],
       fillingFlavor: ['', Validators.required],
       icingFlavor: ['', Validators.required],
-      signatureName: ['']
+      signatureName: [''],
+      isSignature: [false]
     });
   }
 
@@ -517,7 +651,8 @@ export class EditOrderComponent implements OnInit {
       cupcakeFlavor: ['', Validators.required],
       fillingFlavor: ['', Validators.required],
       icingFlavor: ['', Validators.required],
-      signatureName: ['']
+      signatureName: [''],
+      isSignature: [true]
     });
     const arr = this.editOrderFormGroup.get('cupcakeInfo') as FormArray;
     arr.push(group);
@@ -549,7 +684,42 @@ export class EditOrderComponent implements OnInit {
   getBlankCookieFormControls() {
     return this._formBuilder.group({
       cookieType: ['', Validators.required],
-      cookieQuantity: ['', Validators.required]
+      cookieQuantity: ['', Validators.required],
+      cookieSize: ['']
     });
+  }
+
+  getBlankOtherItemFormControls() {
+    return this._formBuilder.group({
+      name: [''],
+      item: ['']
+    });
+  }
+
+  // Returns an array of per-layer flavor strings for a given cake row
+  getLayerFlavorsForRow(cakeIndex: number): string[] {
+    const arr = this.editOrderFormGroup.get('cakeTierInfo') as FormArray;
+    const row = arr.at(cakeIndex) as FormGroup;
+    const numLayers = Number(row.get('numTierLayers')?.value) || 1;
+    const layerFlavorsStr = row.get('layerFlavors')?.value ?? '';
+    if (layerFlavorsStr) {
+      try {
+        const parsed = JSON.parse(layerFlavorsStr);
+        if (Array.isArray(parsed)) {
+          // Ensure length matches numLayers
+          while (parsed.length < numLayers) parsed.push('');
+          return parsed.slice(0, numLayers);
+        }
+      } catch {}
+    }
+    return Array(numLayers).fill('');
+  }
+
+  onLayerFlavorChange(cakeIndex: number, layerIndex: number, value: string) {
+    const arr = this.editOrderFormGroup.get('cakeTierInfo') as FormArray;
+    const row = arr.at(cakeIndex) as FormGroup;
+    const current = this.getLayerFlavorsForRow(cakeIndex);
+    current[layerIndex] = value;
+    row.get('layerFlavors')?.setValue(JSON.stringify(current), { emitEvent: false });
   }
 }

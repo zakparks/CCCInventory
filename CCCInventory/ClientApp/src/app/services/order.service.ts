@@ -16,8 +16,16 @@ export class OrderService {
     return this.http.get<Order[]>(this.baseUrl);
   }
 
-  public GetDeletedOrders(): Observable<Order[]> {
-    return this.http.get<Order[]>(`${this.baseUrl}/deleted`);
+  public GetCancelledOrders(): Observable<Order[]> {
+    return this.http.get<Order[]>(`${this.baseUrl}/cancelled`);
+  }
+
+  public GetOrdersByStatus(status: string): Observable<Order[]> {
+    return this.http.get<Order[]>(`${this.baseUrl}?status=${status}`);
+  }
+
+  public CancelOrder(orderNumber: number, cancellationReason: string): Observable<number> {
+    return this.http.put<number>(`${this.baseUrl}/${orderNumber}/cancel`, { cancellationReason });
   }
 
   public GetOrder(orderNumber: number): Observable<Order> {

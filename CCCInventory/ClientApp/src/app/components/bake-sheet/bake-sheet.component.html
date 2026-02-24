@@ -38,12 +38,14 @@
                 <span class="fw-semibold d-none d-print-inline">#{{ order.orderNumber }}</span>
                 <span>{{ order.custName }}</span>
                 <span class="text-muted small">{{ formatDate(order.orderDateTime) }}</span>
-                @if (order.pickupOrDelivery) {
+                @if (order.orderType === 'Delivery') {
                   <span class="badge bg-success">Delivery</span>
+                } @else if (order.orderType === 'Tasting') {
+                  <span class="badge bg-warning text-dark">Tasting</span>
                 } @else {
                   <span class="badge bg-primary">Pickup</span>
                 }
-                @if (order.deliveryLocation && order.pickupOrDelivery) {
+                @if (order.deliveryLocation && order.orderType === 'Delivery') {
                   <span class="text-muted small">{{ order.deliveryLocation }}</span>
                 }
               </div>
