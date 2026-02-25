@@ -22,6 +22,19 @@
   <div class="col-md-4">
     <div class="card h-100">
       <div class="card-body">
+        <h5 class="card-title">Incomplete Orders</h5>
+        <p class="card-text">Orders that are missing required information.</p>
+        <a routerLink="/all-orders" [queryParams]="{status: 'incomplete'}" class="btn"
+          [class.btn-danger]="hasIncompleteOrders"
+          [class.btn-outline-primary]="!hasIncompleteOrders">
+          Incomplete Orders
+        </a>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-body">
         <h5 class="card-title">Calendar</h5>
         <p class="card-text">See all upcoming orders by date.</p>
         <a routerLink="/calendar" class="btn btn-outline-primary">Open Calendar</a>
@@ -41,7 +54,7 @@
     <div class="card h-100">
       <div class="card-body">
         <h5 class="card-title">Management</h5>
-        <p class="card-text">Manage option lists, signature cupcakes, and deleted orders.</p>
+        <p class="card-text">Manage option lists and signature cupcakes.</p>
         <a routerLink="/management" class="btn btn-outline-secondary">Open Management</a>
       </div>
     </div>

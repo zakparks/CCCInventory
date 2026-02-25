@@ -608,6 +608,118 @@ namespace CCCInventory.Data
                     DateOrderPlaced = today.AddDays(-15),
                     ContractSent = true,
                     Cupcakes = [new Cupcake { CupcakeSize = "Mini", CupcakeQuantity = 24, CupcakeFlavor = "Champagne", FillingFlavor = "None", IcingFlavor = "Blush Buttercream" }]
+                },
+
+                // ── Incomplete Orders (no items) ──────────────────────────────
+                new Order
+                {
+                    OrderDateTime = wed.AddHours(14),
+                    CustName = "Pat Wilson",
+                    CustPhone = "555-100-2003",
+                    CustEmail = "pat.w@email.com",
+                    Details = "Inquired about anniversary cake — no items added yet",
+                    OrderType = "Pickup",
+                    DateOrderPlaced = today.AddDays(-1),
+                    // No Cakes/Cupcakes/Cookies/Pupcakes → incomplete
+                },
+                new Order
+                {
+                    OrderDateTime = fri.AddHours(16),
+                    CustName = "Sam Rivera",
+                    CustEmail = "sam.r@email.com",
+                    CustPhone = null,   // Missing phone → incomplete
+                    Details = "Custom design — waiting on details from customer",
+                    OrderType = "Delivery",
+                    DeliveryLocation = "TBD",
+                    DateOrderPlaced = today.AddDays(-2),
+                },
+
+                // ── Ready for Pickup ──────────────────────────────────────────
+                new Order
+                {
+                    OrderDateTime = tue.AddHours(11),
+                    CustName = "Lisa Rodriguez",
+                    CustPhone = "555-201-3004",
+                    CustEmail = "lisa.r@email.com",
+                    Details = "Birthday cake — baked and ready for pickup",
+                    OrderType = "Pickup",
+                    IsReadyForPickup = true,
+                    TotalCost = 65.00,
+                    DepositAmount = 65.00,
+                    DepositPaymentMethod = "Venmo",
+                    DateOrderPlaced = today.AddDays(-10),
+                    PaidInFull = true,
+                    ContractSent = true,
+                    Cakes = [new Cake { TierSize = "8\"", NumTierLayers = 2, CakeShape = "Round", CakeFlavor = "Chocolate", FillingFlavor = "Chocolate Ganache", IcingFlavor = "Chocolate Buttercream", SplitTier = false }]
+                },
+
+                // ── Cancelled Orders ──────────────────────────────────────────
+                new Order
+                {
+                    OrderDateTime = thu.AddHours(15),
+                    CustName = "Tom Bradley",
+                    CustPhone = "555-301-4005",
+                    CustEmail = "tom.b@email.com",
+                    Details = "Birthday party — cancelled by customer",
+                    OrderType = "Pickup",
+                    CancelledFlag = true,
+                    CancellationReason = "Customer cancelled — event called off last minute",
+                    CancelledAt = today.AddDays(-3),
+                    TotalCost = 75.00,
+                    DepositAmount = 40.00,
+                    DepositPaymentMethod = "Venmo",
+                    DateOrderPlaced = today.AddDays(-18),
+                    ContractSent = true,
+                    Cakes = [new Cake { TierSize = "8\"", NumTierLayers = 2, CakeShape = "Round", CakeFlavor = "Funfetti", FillingFlavor = "Vanilla", IcingFlavor = "Buttercream", SplitTier = false }]
+                },
+                new Order
+                {
+                    OrderDateTime = sat.AddHours(13),
+                    CustName = "Diana Moore",
+                    CustPhone = "555-401-5006",
+                    Details = "Tasting appointment — never confirmed flavors",
+                    OrderType = "Tasting",
+                    CancelledFlag = true,
+                    CancellationReason = "No response after 3 follow-up attempts",
+                    CancelledAt = today.AddDays(-1),
+                    DateOrderPlaced = today.AddDays(-12),
+                },
+
+                // ── Archived Orders (past OrderDateTime) ──────────────────────
+                new Order
+                {
+                    OrderDateTime = today.AddDays(-7).AddHours(10),
+                    CustName = "Amy Chang",
+                    CustPhone = "555-501-6007",
+                    CustEmail = "amy.c@email.com",
+                    Details = "Baby shower cake — lemon with raspberry filling",
+                    OrderType = "Pickup",
+                    TotalCost = 80.00,
+                    DepositAmount = 80.00,
+                    DepositPaymentMethod = "Zelle",
+                    DateOrderPlaced = today.AddDays(-21),
+                    PaidInFull = true,
+                    ContractSent = true,
+                    Cakes = [new Cake { TierSize = "8\"", NumTierLayers = 2, CakeShape = "Round", CakeFlavor = "Lemon", FillingFlavor = "Raspberry", IcingFlavor = "Blush Buttercream", SplitTier = false }]
+                },
+                new Order
+                {
+                    OrderDateTime = today.AddDays(-14).AddHours(12),
+                    CustName = "Greg Hoffman",
+                    CustPhone = "555-601-7008",
+                    Details = "Retirement party — 2 sheet cakes",
+                    OrderType = "Delivery",
+                    DeliveryLocation = "325 Oak Hill Rd",
+                    TotalCost = 120.00,
+                    DepositAmount = 60.00,
+                    DepositPaymentMethod = "Check",
+                    DateOrderPlaced = today.AddDays(-35),
+                    ContractSent = true,
+                    DayOfTextSent = true,
+                    Cakes = [
+                        new Cake { TierSize = "Half Sheet", NumTierLayers = 1, CakeShape = "Round", CakeFlavor = "Vanilla", FillingFlavor = "None", IcingFlavor = "Vanilla Buttercream", SplitTier = false },
+                        new Cake { TierSize = "Half Sheet", NumTierLayers = 1, CakeShape = "Round", CakeFlavor = "Chocolate", FillingFlavor = "None", IcingFlavor = "Chocolate Buttercream", SplitTier = false }
+                    ]
                 }
             );
 

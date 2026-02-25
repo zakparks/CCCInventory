@@ -33,10 +33,28 @@ namespace CCCInventory.Controllers
                 "cancelled"     => query.Where(o => o.CancelledFlag && o.OrderDateTime > now),
                 "archived"      => query.Where(o => o.OrderDateTime <= now),
                 "readyforpickup"=> query.Where(o => o.IsReadyForPickup && !o.CancelledFlag && o.OrderDateTime > now),
-                "incomplete"    => query.Where(o => !o.CancelledFlag && o.OrderDateTime > now
-                                        && (!o.Cakes!.Any() && !o.Cupcakes!.Any() && !o.Cookies!.Any()
-                                            && !o.Pupcakes!.Any() && !o.OtherItems!.Any()
-                                            || o.CustName == null || o.CustPhone == null)),
+                "incomplete"    => query.Where(o => !o.CancelledFlag
+                                        && (o.OrderDateTime == null || o.OrderDateTime > now)
+                                        && (
+                                            string.IsNullOrEmpty(o.Title) ||
+                                            string.IsNullOrEmpty(o.CustName) ||
+                                            (string.IsNullOrEmpty(o.CustPhone) && string.IsNullOrEmpty(o.CustEmail)) ||
+                                            string.IsNullOrEmpty(o.OrderType) ||
+                                            o.OrderDateTime == null ||
+                                            (!o.Cakes!.Any() && !o.Cupcakes!.Any() && !o.Cookies!.Any()
+                                                && !o.Pupcakes!.Any() && !o.OtherItems!.Any()) ||
+                                            o.Cakes!.Any(c => c.TierSize == null || c.TierSize == "" ||
+                                                c.NumTierLayers == 0 ||
+                                                c.CakeShape == null || c.CakeShape == "" ||
+                                                c.CakeFlavor == null || c.CakeFlavor == "" ||
+                                                c.IcingFlavor == null || c.IcingFlavor == "") ||
+                                            o.Cupcakes!.Any(c => c.CupcakeSize == null || c.CupcakeSize == "" ||
+                                                c.CupcakeQuantity == 0 ||
+                                                c.CupcakeFlavor == null || c.CupcakeFlavor == "" ||
+                                                c.IcingFlavor == null || c.IcingFlavor == "") ||
+                                            o.Pupcakes!.Any(p => p.PupcakeQuantity == 0) ||
+                                            o.Cookies!.Any(c => c.CookieQuantity == 0)
+                                        )),
                 _               => query.Where(o => !o.CancelledFlag && o.OrderDateTime > now)
             };
 

@@ -37,6 +37,9 @@ export class EditOrderComponent implements OnInit, OnDestroy {
   showArchiveModal: boolean = false;
   archiveCancellationReason: string = '';
 
+  // Incomplete-order warning modal state
+  showIncompleteWarning: boolean = false;
+
   // used to decide which CRUD buttons to show
   public createOrUpdate: string = "Create";
 
@@ -63,7 +66,7 @@ export class EditOrderComponent implements OnInit, OnDestroy {
     deliveryLocation: [''],
     custName: ['', Validators.required],
     custEmail: [''],
-    custPhone: ['', Validators.required],
+    custPhone: [''],   // optional when email is provided — handled by soft validation
     details: [''],
     orderType: [''],
     title: [''],
@@ -107,6 +110,59 @@ export class EditOrderComponent implements OnInit, OnDestroy {
   // Active-only signatures for new orders; all for existing orders
   get signaturesForForm(): SignatureCupcake[] {
     return this.createOrUpdate === 'Update' ? this.signatures : this.signatures.filter(s => s.isActive);
+  }
+
+  // Computes the set of incomplete-field keys based on current form values.
+  // Keys are used by isFieldIncomplete() to drive red highlighting in the template.
+  get incompleteReasons(): Set<string> {
+    const v = this.editOrderFormGroup.value;
+    const r = new Set<string>();
+
+    if (!v.title?.trim()) r.add('title');
+    if (!v.custName?.trim()) r.add('custName');
+    if (!v.custPhone?.trim() && !v.custEmail?.trim()) r.add('contact');
+    if (!v.orderDate) r.add('orderDate');
+    if (!v.orderType) r.add('orderType');
+
+    const hasItems = (v.cakeTierInfo?.length ?? 0) > 0
+      || (v.cupcakeInfo?.length ?? 0) > 0
+      || (v.pupcakeInfo?.length ?? 0) > 0
+      || (v.cookieInfo?.length ?? 0) > 0
+      || (v.otherItemInfo?.length ?? 0) > 0;
+    if (!hasItems) r.add('noItems');
+
+    (v.cakeTierInfo as any[] ?? []).forEach((cake: any, i: number) => {
+      if (!cake.tierSize) r.add(`cake_${i}_tierSize`);
+      if (!cake.numTierLayers || +cake.numTierLayers < 1) r.add(`cake_${i}_numTierLayers`);
+      if (!cake.cakeShape) r.add(`cake_${i}_cakeShape`);
+      if (!cake.cakeFlavor) r.add(`cake_${i}_cakeFlavor`);
+      if (!cake.icingFlavor) r.add(`cake_${i}_icingFlavor`);
+    });
+
+    (v.cupcakeInfo as any[] ?? []).forEach((cup: any, i: number) => {
+      if (!cup.cupcakeSize) r.add(`cupcake_${i}_cupcakeSize`);
+      if (!cup.cupcakeQuantity || +cup.cupcakeQuantity < 1) r.add(`cupcake_${i}_cupcakeQuantity`);
+      if (!cup.cupcakeFlavor) r.add(`cupcake_${i}_cupcakeFlavor`);
+      if (!cup.icingFlavor) r.add(`cupcake_${i}_icingFlavor`);
+    });
+
+    (v.pupcakeInfo as any[] ?? []).forEach((pup: any, i: number) => {
+      if (!pup.pupcakeQuantity || +pup.pupcakeQuantity < 1) r.add(`pupcake_${i}_pupcakeQuantity`);
+    });
+
+    (v.cookieInfo as any[] ?? []).forEach((cookie: any, i: number) => {
+      if (!cookie.cookieQuantity || +cookie.cookieQuantity < 1) r.add(`cookie_${i}_cookieQuantity`);
+    });
+
+    return r;
+  }
+
+  get isOrderIncomplete(): boolean {
+    return this.incompleteReasons.size > 0;
+  }
+
+  isFieldIncomplete(key: string): boolean {
+    return this.incompleteReasons.has(key);
   }
 
   ngOnInit() {
@@ -346,8 +402,8 @@ export class EditOrderComponent implements OnInit, OnDestroy {
     this.action = 'update';
   }
 
-  updateOrder() {
-    if (this.editOrderFormGroup.valid) {
+  updateOrder(force = false) {
+    if (force || this.editOrderFormGroup.valid) {
       this.orderToEdit = this.buildOrderFromForm();
       this.orderService
         .UpdateOrder(this.orderToEdit)
@@ -422,8 +478,8 @@ export class EditOrderComponent implements OnInit, OnDestroy {
     this.action = 'create';
   }
 
-  createOrder() {
-    if (this.editOrderFormGroup.valid) {
+  createOrder(force = false) {
+    if (force || this.editOrderFormGroup.valid) {
       this.orderToEdit = this.buildOrderFromForm();
       this.orderService
         .AddOrder(this.orderToEdit)
@@ -461,12 +517,29 @@ export class EditOrderComponent implements OnInit, OnDestroy {
   }
 
   onSubmit() {
+    if (this.action !== 'none' && this.isOrderIncomplete) {
+      this.showIncompleteWarning = true;
+      return;
+    }
+    this.executeSave();
+  }
+
+  confirmSaveAnyway() {
+    this.showIncompleteWarning = false;
+    this.executeSave(true);
+  }
+
+  dismissIncompleteWarning() {
+    this.showIncompleteWarning = false;
+  }
+
+  private executeSave(force = false) {
     switch (this.action) {
       case 'create':
-        this.createOrder();
+        this.createOrder(force);
         break;
       case 'update':
-        this.updateOrder();
+        this.updateOrder(force);
         break;
     }
   }
@@ -553,7 +626,24 @@ export class EditOrderComponent implements OnInit, OnDestroy {
     if (!input.files || input.files.length === 0) return;
 
     const files = Array.from(input.files);
-    this.attachmentService.UploadFiles(this.orderToEdit.orderNumber!, files).subscribe({
+
+    if (this.createOrUpdate === 'Create') {
+      // Save the order first so we have an orderNumber, then upload
+      const order = this.buildOrderFromForm();
+      this.orderService.AddOrder(order).subscribe((result: number) => {
+        this.createOrUpdate = 'Update';
+        this.editOrderFormGroup.get('orderNumber')?.setValue(result, { emitEvent: false });
+        this.orderToEdit = { ...order, orderNumber: result };
+        this.toastSuccess(`Order ${result} auto-saved.`);
+        this.doUpload(result, files, input);
+      });
+    } else {
+      this.doUpload(this.orderToEdit.orderNumber!, files, input);
+    }
+  }
+
+  private doUpload(orderNumber: number, files: File[], input: HTMLInputElement) {
+    this.attachmentService.UploadFiles(orderNumber, files).subscribe({
       next: newAttachments => {
         this.attachments = [...this.attachments, ...newAttachments];
         input.value = '';
@@ -634,7 +724,7 @@ export class EditOrderComponent implements OnInit, OnDestroy {
 
   getBlankCupcakeFormControls() {
     return this._formBuilder.group({
-      cupcakeSize: ['', Validators.required],
+      cupcakeSize: ['Regular', Validators.required],
       cupcakeQuantity: ['', Validators.required],
       cupcakeFlavor: ['', Validators.required],
       fillingFlavor: ['', Validators.required],

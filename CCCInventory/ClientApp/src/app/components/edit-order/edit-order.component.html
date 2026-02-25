@@ -1,4 +1,5 @@
 <h1>Order Form</h1>
+<hr />
 
 <!-- Cancellation Reason banner (shown when order is archived) -->
 @if (orderToEdit.cancelledFlag) {
@@ -16,9 +17,12 @@
   <!-- Title -->
   <div class="d-flex align-items-center gap-2 mb-0">
     <h5 class="mb-0 text-nowrap">Title</h5>
-    <input formControlName="title" type="text" class="form-control" />
+    <input formControlName="title" type="text" class="form-control"
+      [ngClass]="{'is-invalid': isFieldIncomplete('title')}" />
+    @if (isFieldIncomplete('title')) {
+      <span class="text-danger text-nowrap small">Required</span>
+    }
   </div>
-  <hr class="mt-2" />
 
   <!-- Order Information (3-column grid) -->
   <h5>Order Information</h5>
@@ -31,12 +35,13 @@
         <label for="orderNumber">Order Number</label>
       </div>
       <div class="mb-2 form-floating">
-        <input formControlName="custEmail" type="email" id="custEmail" class="form-control" />
+        <input formControlName="custEmail" type="email" id="custEmail" class="form-control"
+          [ngClass]="{'is-invalid': isFieldIncomplete('contact')}" />
         <label for="custEmail">Customer Email</label>
       </div>
       <div class="mb-2 form-floating">
         <input formControlName="orderDate" type="date" id="orderDate" class="form-control"
-          [ngClass]="{'is-invalid': isInvalid('orderDate')}" />
+          [ngClass]="{'is-invalid': isInvalid('orderDate') || isFieldIncomplete('orderDate')}" />
         <label for="orderDate">Delivery Date *</label>
         <div class="invalid-feedback">Date is required.</div>
       </div>
@@ -54,15 +59,16 @@
     <div class="col-md-3">
       <div class="mb-2 form-floating">
         <input formControlName="custName" type="text" id="custName" class="form-control"
-          [ngClass]="{'is-invalid': isInvalid('custName')}" />
+          [ngClass]="{'is-invalid': isInvalid('custName') || isFieldIncomplete('custName')}" />
         <label for="custName">Customer Name *</label>
         <div class="invalid-feedback">Customer name is required.</div>
       </div>
       <div class="mb-2 form-floating">
         <input formControlName="custPhone" type="tel" maxlength="12" (input)="onTelInput($event, 'custPhone')"
-          id="custPhone" class="form-control" [ngClass]="{'is-invalid': isInvalid('custPhone')}" />
-        <label for="custPhone">Customer Phone *</label>
-        <div class="invalid-feedback">Phone number is required.</div>
+          id="custPhone" class="form-control"
+          [ngClass]="{'is-invalid': isFieldIncomplete('contact')}" />
+        <label for="custPhone">Customer Phone</label>
+        <div class="invalid-feedback">At least one of phone or email is required.</div>
       </div>
       <div class="mb-2 form-floating">
         <input formControlName="orderTime" type="time" id="orderTime" class="form-control" />
@@ -81,29 +87,35 @@
 
     <!-- Column 3: Details spanning all rows -->
     <div class="col-md-6 d-flex flex-column" style="min-height: 280px;">
-      <label for="details" class="form-label">Details</label>
-      <textarea formControlName="details" id="details" class="form-control flex-grow-1"></textarea>
+      <div class="form-floating flex-grow-1">
+        <textarea formControlName="details" id="details" class="form-control" style="height: 100%"
+          placeholder="Details"></textarea>
+        <label for="details">Details</label>
+      </div>
     </div>
   </div>
 
-  <!-- Radio buttons: Pickup / Delivery / Tasting -->
-  <div class="d-flex gap-4 mt-2">
+  <!-- Radio buttons + Toggles on the same line -->
+  <div class="d-flex flex-wrap align-items-center gap-4 mt-2">
     <div class="form-check">
-      <input class="form-check-input" type="radio" formControlName="orderType" value="Pickup" id="radioPickup" />
+      <input class="form-check-input" type="radio" formControlName="orderType" value="Pickup" id="radioPickup"
+        [ngClass]="{'is-invalid': isFieldIncomplete('orderType')}" />
       <label class="form-check-label" for="radioPickup">Pickup</label>
     </div>
     <div class="form-check">
-      <input class="form-check-input" type="radio" formControlName="orderType" value="Delivery" id="radioDelivery" />
+      <input class="form-check-input" type="radio" formControlName="orderType" value="Delivery" id="radioDelivery"
+        [ngClass]="{'is-invalid': isFieldIncomplete('orderType')}" />
       <label class="form-check-label" for="radioDelivery">Delivery</label>
     </div>
     <div class="form-check">
-      <input class="form-check-input" type="radio" formControlName="orderType" value="Tasting" id="radioTasting" />
+      <input class="form-check-input" type="radio" formControlName="orderType" value="Tasting" id="radioTasting"
+        [ngClass]="{'is-invalid': isFieldIncomplete('orderType')}" />
       <label class="form-check-label" for="radioTasting">Tasting</label>
     </div>
-  </div>
-
-  <!-- Toggles -->
-  <div class="d-flex flex-wrap gap-4 mt-1">
+    @if (isFieldIncomplete('orderType')) {
+      <small class="text-danger">Required</small>
+    }
+    <div class="vr"></div>
     <div class="form-check form-switch">
       <input formControlName="contractSent" class="form-check-input" type="checkbox" role="switch" id="contractSentSwitch">
       <label class="form-check-label" for="contractSentSwitch">Contract Sent</label>
@@ -139,6 +151,9 @@
     <button type="button" class="btn btn-outline-primary" style="width: 110px"
       (click)="addRow('otherItemInfo', getBlankOtherItemFormControls())">Other</button>
   </div>
+  @if (isFieldIncomplete('noItems')) {
+    <div class="text-danger small mt-1">At least one item must be added to the order.</div>
+  }
 
   <!-- datalist for signature autocomplete -->
   <datalist id="signaturesList">
@@ -165,7 +180,8 @@
 
         <div class="col-md-2">
           <div class="form-floating">
-            <select formControlName="tierSize" [id]="'tierSize' + i" class="form-select">
+            <select formControlName="tierSize" [id]="'tierSize' + i" class="form-select"
+              [ngClass]="{'is-invalid': isFieldIncomplete('cake_' + i + '_tierSize')}">
               <option value=""></option>
               @for (v of cakeTierSizes; track v) { <option [value]="v">{{ v }}</option> }
             </select>
@@ -176,14 +192,16 @@
         <div class="col-md-1">
           <div class="form-floating">
             <input formControlName="numTierLayers" type="number" min="1" [id]="'numTierLayers' + i"
-              class="form-control" />
+              class="form-control"
+              [ngClass]="{'is-invalid': isFieldIncomplete('cake_' + i + '_numTierLayers')}" />
             <label [for]="'numTierLayers' + i"># Layers *</label>
           </div>
         </div>
 
         <div class="col-md-1">
           <div class="form-floating">
-            <select formControlName="cakeShape" [id]="'cakeShape' + i" class="form-select">
+            <select formControlName="cakeShape" [id]="'cakeShape' + i" class="form-select"
+              [ngClass]="{'is-invalid': isFieldIncomplete('cake_' + i + '_cakeShape')}">
               <option value=""></option>
               @for (v of cakeShapes; track v) { <option [value]="v">{{ v }}</option> }
             </select>
@@ -193,7 +211,8 @@
 
         <div class="col-md-2">
           <div class="form-floating">
-            <select formControlName="cakeFlavor" [id]="'cakeFlavor' + i" class="form-select">
+            <select formControlName="cakeFlavor" [id]="'cakeFlavor' + i" class="form-select"
+              [ngClass]="{'is-invalid': isFieldIncomplete('cake_' + i + '_cakeFlavor')}">
               <option value=""></option>
               @for (v of flavors; track v) { <option [value]="v">{{ v }}</option> }
             </select>
@@ -207,13 +226,14 @@
               <option value=""></option>
               @for (v of fillingFlavors; track v) { <option [value]="v">{{ v }}</option> }
             </select>
-            <label [for]="'fillingFlavor' + i">Filling *</label>
+            <label [for]="'fillingFlavor' + i">Filling</label>
           </div>
         </div>
 
         <div class="col-md-2">
           <div class="form-floating">
-            <select formControlName="icingFlavor" [id]="'icingFlavor' + i" class="form-select">
+            <select formControlName="icingFlavor" [id]="'icingFlavor' + i" class="form-select"
+              [ngClass]="{'is-invalid': isFieldIncomplete('cake_' + i + '_icingFlavor')}">
               <option value=""></option>
               @for (v of icingFlavors; track v) { <option [value]="v">{{ v }}</option> }
             </select>
@@ -300,7 +320,8 @@
 
         <div class="col-md-1">
           <div class="form-floating">
-            <select formControlName="cupcakeSize" [id]="'cupcakeSize' + i" class="form-select">
+            <select formControlName="cupcakeSize" [id]="'cupcakeSize' + i" class="form-select"
+              [ngClass]="{'is-invalid': isFieldIncomplete('cupcake_' + i + '_cupcakeSize')}">
               <option value=""></option>
               @for (v of cupcakeSizes; track v) { <option [value]="v">{{ v }}</option> }
             </select>
@@ -311,14 +332,16 @@
         <div class="col-md-1">
           <div class="form-floating">
             <input formControlName="cupcakeQuantity" type="number" [id]="'cupcakeQuantity' + i"
-              class="form-control" />
+              class="form-control"
+              [ngClass]="{'is-invalid': isFieldIncomplete('cupcake_' + i + '_cupcakeQuantity')}" />
             <label [for]="'cupcakeQuantity' + i">Qty *</label>
           </div>
         </div>
 
         <div class="col-md-2">
           <div class="form-floating">
-            <select formControlName="cupcakeFlavor" [id]="'cupcakeFlavor' + i" class="form-select">
+            <select formControlName="cupcakeFlavor" [id]="'cupcakeFlavor' + i" class="form-select"
+              [ngClass]="{'is-invalid': isFieldIncomplete('cupcake_' + i + '_cupcakeFlavor')}">
               <option value=""></option>
               @for (v of flavors; track v) { <option [value]="v">{{ v }}</option> }
             </select>
@@ -332,13 +355,14 @@
               <option value=""></option>
               @for (v of fillingFlavors; track v) { <option [value]="v">{{ v }}</option> }
             </select>
-            <label [for]="'cupcakeFillingFlavor' + i">Filling *</label>
+            <label [for]="'cupcakeFillingFlavor' + i">Filling</label>
           </div>
         </div>
 
         <div class="col-md-2">
           <div class="form-floating">
-            <select formControlName="icingFlavor" [id]="'cupcakeIcingFlavor' + i" class="form-select">
+            <select formControlName="icingFlavor" [id]="'cupcakeIcingFlavor' + i" class="form-select"
+              [ngClass]="{'is-invalid': isFieldIncomplete('cupcake_' + i + '_icingFlavor')}">
               <option value=""></option>
               @for (v of icingFlavors; track v) { <option [value]="v">{{ v }}</option> }
             </select>
@@ -377,7 +401,8 @@
         <div class="col-md-2">
           <div class="form-floating">
             <input formControlName="pupcakeQuantity" type="number" [id]="'pupcakeQuantity' + i"
-              class="form-control" />
+              class="form-control"
+              [ngClass]="{'is-invalid': isFieldIncomplete('pupcake_' + i + '_pupcakeQuantity')}" />
             <label [for]="'pupcakeQuantity' + i">Qty *</label>
           </div>
         </div>
@@ -420,7 +445,8 @@
         <div class="col-md-1">
           <div class="form-floating">
             <input formControlName="cookieQuantity" type="number" [id]="'cookieQuantity' + i"
-              class="form-control" />
+              class="form-control"
+              [ngClass]="{'is-invalid': isFieldIncomplete('cookie_' + i + '_cookieQuantity')}" />
             <label [for]="'cookieQuantity' + i">Qty *</label>
           </div>
         </div>
@@ -477,18 +503,6 @@
           (blur)="onTotalCostInput($event, 'depositAmount')" />
         <label for="depositAmountFormatted">Deposit Amount</label>
       </div>
-      <div class="mb-2 form-floating">
-        <input formControlName="labor" type="number" id="labor" class="form-control" step="0.01" />
-        <label for="labor">Labor</label>
-      </div>
-      <div class="mb-2 form-floating">
-        <input formControlName="flavorUpgrade" type="number" id="flavorUpgrade" class="form-control" step="0.01" />
-        <label for="flavorUpgrade">Flavor Upgrade</label>
-      </div>
-      <div class="mb-2 form-floating">
-        <input formControlName="lookbookPrice" type="number" id="lookbookPrice" class="form-control" step="0.01" />
-        <label for="lookbookPrice">Lookbook Price</label>
-      </div>
     </div>
     <div class="col-md-3">
       <div class="mb-2 form-floating">
@@ -524,21 +538,36 @@
         </div>
       </div>
     </div>
+    <!-- Labor / Flavor Upgrade / Lookbook Price on same row -->
+    <div class="col-md-3">
+      <div class="mb-2 form-floating">
+        <input formControlName="labor" type="number" id="labor" class="form-control" step="0.01" />
+        <label for="labor">Labor</label>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="mb-2 form-floating">
+        <input formControlName="flavorUpgrade" type="number" id="flavorUpgrade" class="form-control" step="0.01" />
+        <label for="flavorUpgrade">Flavor Upgrade</label>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="mb-2 form-floating">
+        <input formControlName="lookbookPrice" type="number" id="lookbookPrice" class="form-control" step="0.01" />
+        <label for="lookbookPrice">Lookbook Price</label>
+      </div>
+    </div>
   </div>
 
   <!-- ── Attachments ─────────────────────────────────────────── -->
   <hr />
   <h5>Attachments</h5>
   <div class="mb-3">
-    <label class="btn btn-outline-secondary" [class.disabled]="createOrUpdate === 'Create'" for="fileInput">
+    <label class="btn btn-outline-secondary" for="fileInput">
       + Add Files
       <input type="file" id="fileInput" class="d-none" multiple accept="image/*,.pdf"
-        [disabled]="createOrUpdate === 'Create'"
         (change)="onFileSelected($event)" />
     </label>
-    @if (createOrUpdate === 'Create') {
-      <span class="text-muted ms-2 small">Save the order first to enable attachments.</span>
-    }
   </div>
   <div class="d-flex flex-wrap gap-3 mb-3">
     @for (attachment of attachments; track attachment.id) {
@@ -628,6 +657,28 @@
   </div>
 
 </form>
+
+<!-- Incomplete order warning modal -->
+@if (showIncompleteWarning) {
+  <div class="modal-backdrop show" style="opacity: 0.5;"></div>
+  <div class="modal d-block" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header border-warning">
+          <h5 class="modal-title text-warning">&#9888; Order is Incomplete</h5>
+        </div>
+        <div class="modal-body">
+          <p class="mb-1">This order is missing required information (highlighted in red). It will appear in the <strong>Incomplete</strong> orders list until resolved.</p>
+          <p class="mb-0">Save anyway?</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-warning" (click)="confirmSaveAnyway()">Yes, Save Anyway</button>
+          <button type="button" class="btn btn-secondary" (click)="dismissIncompleteWarning()">Go Back</button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
 
 <!-- Archive confirmation modal (outside the reactive form to avoid conflicts) -->
 @if (showArchiveModal) {

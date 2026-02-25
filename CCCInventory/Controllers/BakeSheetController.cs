@@ -29,27 +29,29 @@ namespace CCCInventory.Controllers
                 ? DateTime.Today
                 : DateTime.Parse(weekOf);
 
-            // Calculate Monday–Sunday of the given week
-            var dayOfWeek = (int)date.DayOfWeek;
-            var monday = date.AddDays(-(dayOfWeek == 0 ? 6 : dayOfWeek - 1)).Date;
-            var sunday = monday.AddDays(6).Date;
-            var endOfSunday = sunday.AddDays(1);
+            // Calculate Thursday–Wednesday of the bake week containing the given date
+            var dayOfWeek = (int)date.DayOfWeek;          // 0=Sun … 4=Thu … 6=Sat
+            var daysFromThursday = (dayOfWeek - 4 + 7) % 7;
+            var thursday = date.AddDays(-daysFromThursday).Date;
+            var wednesday = thursday.AddDays(6).Date;
+            var endOfWednesday = wednesday.AddDays(1);
 
             var orders = await _context.Orders
                 .Include(o => o.Cakes)
                 .Include(o => o.Cupcakes)
                 .Include(o => o.Cookies)
                 .Include(o => o.Pupcakes)
+                .Include(o => o.OtherItems)
                 .Where(o => !o.CancelledFlag &&
-                            o.OrderDateTime >= monday &&
-                            o.OrderDateTime < endOfSunday)
+                            o.OrderDateTime >= thursday &&
+                            o.OrderDateTime < endOfWednesday)
                 .OrderBy(o => o.OrderDateTime)
                 .ToListAsync();
 
             return Ok(new BakeSheetResponse
             {
-                WeekStart = monday,
-                WeekEnd = sunday,
+                WeekStart = thursday,
+                WeekEnd = wednesday,
                 Orders = orders
             });
         }

@@ -1,8 +1,8 @@
 # CCCInventory — Development Plan
 
 **Project:** Custom Cake & Cookie (CCC) Bakery Order Management System
-**Last Updated:** 2026-02-23
-**Status:** Active Development — Phase 4.5 Complete; Phase 5 (Order Form Overhaul) Next
+**Last Updated:** 2026-02-25
+**Status:** Active Development — Phase 7 Complete; Phase 8 (Party Rentals) Next
 
 ---
 
@@ -86,9 +86,11 @@ Moved to Phase 10.
 
 ---
 
-## Phase 5 — Order Form & Core Data Model Overhaul
+## Phase 5 — Order Form & Core Data Model Overhaul ✅ Completed
 
 *First demo feedback. This is the largest phase — it touches the core data model, the order form, and several cross-cutting behaviors (Archive, Autosave, status system). All sub-phases share the same migration and should be implemented together.*
+
+**Implemented:** All 16 sub-phases complete. EF Core migration: added Title, CancellationReason, CancelledAt, CancelledFlag, IsReadyForPickup, Labor, FlavorUpgrade, LookbookPrice to Order; Flavor2 and LayerFlavors (JSON) to Cake; CookieSize to Cookie; new OtherItem entity. Full order form rewrite with 3-column grid, split date/time inputs, floating labels, orderType radios + toggles on one line, per-layer cake flavors, cupcake signature rows, cookie size dropdown, Other item type, attachment upload enabled from page load (auto-saves order first), Labor/FlavorUpgrade/LookbookPrice pricing fields. Archive flow with required cancellation reason modal; Restore flow prepends cancellation info to Details. Autosave debounced 4s via valueChanges pipe. Management cleanup: removed Deleted Orders section. Bake sheet and calendar updated for orderType field. **Enhanced beyond spec:** Incomplete order detection expanded to 10+ conditions (title, name, phone/email, delivery date, order type, no items, per-item field checks); red field highlighting on load; "Save anyway?" modal allows intentionally saving incomplete orders.*
 
 ### 5.1 — Data Model Changes
 
@@ -244,9 +246,11 @@ Remove the "Deleted Orders" collapsible section. Archived order management moves
 
 ---
 
-## Phase 6 — All Orders & Homepage
+## Phase 6 — All Orders & Homepage ✅ Completed
 
 *Depends on Phase 5 (status system, new fields). Primarily display, filtering, and sorting work — no additional model changes.*
+
+**Implemented:** All Orders table redesigned with sortable columns (Date, Order #, Name, Type, Cost), Date column added, default sort date-ascending. Status toggle group: Active | Incomplete | Ready for Pickup | Cancelled | Archived — navigable via queryParam from homepage. Red `!` badge on Incomplete tab when incomplete orders exist. Homepage: Incomplete Orders card with dynamic red/outline button. Backend `GetOrders` extended with all five status filters; incomplete filter covers 10+ conditions (title, name, phone/email, delivery date, order type, no items, per-item field validation). Seed data updated with orders covering all five states.*
 
 ### 6.1 — All Orders: Table Improvements
 
@@ -272,9 +276,11 @@ Orders automatically move to the Archived state once their `OrderDateTime` passe
 
 ---
 
-## Phase 7 — Bake Sheet Redesign
+## Phase 7 — Bake Sheet Redesign ✅ Completed
 
 *Full redesign. The existing aggregated-totals approach is replaced with an order-level, per-layer row model. Mostly independent from Phase 5/6.*
+
+**Implemented:** Removed "Orders This Week" collapsible section. Combined cakes and cupcakes into one table — one row per cake layer (respecting layerFlavors JSON and splitTier), one row per cupcake line. Cookies, Pupcakes, Other Items each in their own table below. Columns: Order # | Size/Qty | Flavor | Day | Notes. Day-of-week color highlighting (Mon=red, Tue=orange, Wed=yellow, Thu=green, Fri=blue, Sat=purple). Special display rules: Micro→6"/Notes="Micro"; Quarter Sheet→"Half Sheet"/Notes="Cut"; Quarter Sheet+splitTier→Notes="Cut twice". Order # pastel color coding for orders spanning multiple rows. Bake week changed to Thu–Wed window in both backend and frontend. Print styles: gridlines on all tables, 100% width, no margins, nav hidden.*
 
 ### 7.1 — Structure Changes
 
@@ -610,9 +616,9 @@ SQLite (`orders.db`). Zero installation on shop PC. `Database.Migrate()` called 
 | Priority | Phase | Rationale |
 |---|---|---|
 | 1 | Phases 0–4.5 ✅ | Done |
-| 2 | Phase 5 — Order Form Overhaul | Core UX; largest immediate need; model changes other phases depend on |
-| 3 | Phase 6 — All Orders & Homepage | Depends on Phase 5 status system |
-| 4 | Phase 7 — Bake Sheet Redesign | Mostly independent; high daily operational value |
+| 2 | Phase 5 — Order Form Overhaul ✅ | Core UX; largest immediate need; model changes other phases depend on |
+| 3 | Phase 6 — All Orders & Homepage ✅ | Depends on Phase 5 status system |
+| 4 | Phase 7 — Bake Sheet Redesign ✅ | Mostly independent; high daily operational value |
 | 5 | Phase 8 — Party Rentals | New independent feature |
 | 6 | Phase 9 — Authentication | Required before deployment; PIN/audit system |
 | 7 | Phase 10 — Google Calendar | Requires live domain (Phase 15 prereq) + Phase 5 Title field |

@@ -1,26 +1,74 @@
 <h1 id="tableLabel">All Orders</h1>
 
+<!-- Status filter toggle (same btn-group pattern as Calendar Month/Week) -->
+<div class="btn-group btn-group-sm mb-3">
+  <button type="button" class="btn"
+    [class.btn-primary]="statusFilter === 'active'"
+    [class.btn-outline-secondary]="statusFilter !== 'active'"
+    (click)="setStatus('active')">Active</button>
+  <button type="button" class="btn"
+    [class.btn-primary]="statusFilter === 'incomplete'"
+    [class.btn-outline-secondary]="statusFilter !== 'incomplete'"
+    (click)="setStatus('incomplete')">
+    Incomplete
+    @if (hasIncomplete && statusFilter !== 'incomplete') {
+      <span class="badge bg-danger ms-1">!</span>
+    }
+  </button>
+  <button type="button" class="btn"
+    [class.btn-primary]="statusFilter === 'readyforpickup'"
+    [class.btn-outline-secondary]="statusFilter !== 'readyforpickup'"
+    (click)="setStatus('readyforpickup')">Ready for Pickup</button>
+  <button type="button" class="btn"
+    [class.btn-primary]="statusFilter === 'cancelled'"
+    [class.btn-outline-secondary]="statusFilter !== 'cancelled'"
+    (click)="setStatus('cancelled')">Cancelled</button>
+  <button type="button" class="btn"
+    [class.btn-primary]="statusFilter === 'archived'"
+    [class.btn-outline-secondary]="statusFilter !== 'archived'"
+    (click)="setStatus('archived')">Archived</button>
+</div>
+
+<!-- Search -->
 <div class="mb-3 row align-items-center">
   <label for="table-filtering-search" class="col-sm-auto col-form-label">Search:</label>
   <div class="col-sm-auto">
-    <input id="table-filtering-search" class="form-control" type="text" [formControl]="filter" placeholder="Name, details, email, order #" />
+    <input id="table-filtering-search" class="form-control" type="text" [formControl]="filter"
+      placeholder="Name, details, email, order #" />
   </div>
 </div>
 
 <table class="table table-striped table-hover" aria-labelledby="tableLabel">
   <thead>
     <tr>
-      <th>Order #</th>
-      <th>Name</th>
-      <th>Details</th>
-      <th>Email</th>
+      <th style="cursor:pointer; white-space:nowrap;" (click)="sort('orderNumber')">
+        Order #
+        @if (sortColumn === 'orderNumber') { {{ sortDir === 'asc' ? '▲' : '▼' }} }
+      </th>
+      <th style="cursor:pointer; white-space:nowrap;" (click)="sort('orderDateTime')">
+        Date
+        @if (sortColumn === 'orderDateTime') { {{ sortDir === 'asc' ? '▲' : '▼' }} }
+      </th>
+      <th style="cursor:pointer;" (click)="sort('custName')">
+        Name
+        @if (sortColumn === 'custName') { {{ sortDir === 'asc' ? '▲' : '▼' }} }
+      </th>
+      <th style="cursor:pointer;" (click)="sort('details')">
+        Details
+        @if (sortColumn === 'details') { {{ sortDir === 'asc' ? '▲' : '▼' }} }
+      </th>
+      <th style="cursor:pointer;" (click)="sort('custEmail')">
+        Email
+        @if (sortColumn === 'custEmail') { {{ sortDir === 'asc' ? '▲' : '▼' }} }
+      </th>
       <th></th>
     </tr>
   </thead>
   <tbody>
-    @for (order of filteredOrders$ | async; track order.orderNumber) {
+    @for (order of displayOrders; track order.orderNumber) {
       <tr>
         <th scope="row">{{ order.orderNumber }}</th>
+        <td style="white-space:nowrap;">{{ order.orderDateTime | date:'M/d/yy' }}</td>
         <td><ngb-highlight [result]="order.custName ?? ''" [term]="filter.value" /></td>
         <td><ngb-highlight [result]="order.details ?? ''" [term]="filter.value" /></td>
         <td><ngb-highlight [result]="order.custEmail ?? ''" [term]="filter.value" /></td>
@@ -30,7 +78,7 @@
       </tr>
     } @empty {
       <tr>
-        <td colspan="5" class="text-center text-muted">No orders found</td>
+        <td colspan="6" class="text-center text-muted">No orders found</td>
       </tr>
     }
   </tbody>
