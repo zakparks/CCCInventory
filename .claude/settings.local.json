@@ -3,5 +3,21 @@
     "allow": [
       "Bash(git -C \"m:/OneDrive/software/Programming/Github/CCCInventory\" log --oneline -15)"
     ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -c \"import sys,json,subprocess; d=json.load(sys.stdin); f=d.get('tool_input',{}).get('file_path',''); subprocess.run(['dotnet','build','m:/OneDrive/software/Programming/Github/CCCInventory/CCCInventory/'],check=False) if f.endswith('.cs') else subprocess.run(['npm','run','build','--','--configuration','development'],cwd='m:/OneDrive/software/Programming/Github/CCCInventory/CCCInventory/ClientApp',check=False) if f.endswith(('.ts','.html')) else None\"",
+            "timeout": 180,
+            "async": true,
+            "statusMessage": "Running build check..."
+          }
+        ]
+      }
+    ]
   }
 }

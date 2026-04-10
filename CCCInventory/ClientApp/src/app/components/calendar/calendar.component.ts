@@ -16,76 +16,7 @@ interface CalendarDay {
   standalone: true,
   imports: [CommonModule],
   templateUrl: './calendar.component.html',
-  styles: [`
-    .calendar-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      border-left: 1px solid #dee2e6;
-      border-top: 1px solid #dee2e6;
-    }
-    .calendar-weekday {
-      background: #f8f9fa;
-      text-align: center;
-      padding: 6px;
-      font-weight: 600;
-      font-size: .8rem;
-      border-right: 1px solid #dee2e6;
-      border-bottom: 1px solid #dee2e6;
-    }
-    .calendar-weekday.today-header {
-      background: #dbeafe;
-      color: #1d4ed8;
-    }
-    .calendar-day {
-      min-height: 110px;
-      padding: 4px;
-      border-right: 1px solid #dee2e6;
-      border-bottom: 1px solid #dee2e6;
-      vertical-align: top;
-    }
-    .calendar-day.week-view-day {
-      min-height: 320px;
-    }
-    .calendar-day.week-view-day.today {
-      background: #f0f5ff;
-    }
-    .day-number {
-      font-size: .8rem;
-      font-weight: 500;
-      margin-bottom: 2px;
-      width: 24px;
-      height: 24px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 50%;
-    }
-    .other-month { background: #f8f9fa; }
-    .other-month .day-number { color: #adb5bd; }
-    .today .day-number {
-      background: #0d6efd;
-      color: white;
-    }
-    .order-pill {
-      display: block;
-      font-size: .72rem;
-      padding: 2px 5px;
-      border-radius: 3px;
-      cursor: pointer;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-bottom: 2px;
-      background: #cfe2ff;
-      border-left: 3px solid #0d6efd;
-      line-height: 1.4;
-    }
-    .order-pill:hover { opacity: .75; }
-    .order-delivery {
-      background: #d1e7dd;
-      border-left-color: #198754;
-    }
-  `]
+  styleUrls: ['./calendar.component.css']
 })
 export class CalendarComponent implements OnInit {
   viewDate = new Date();

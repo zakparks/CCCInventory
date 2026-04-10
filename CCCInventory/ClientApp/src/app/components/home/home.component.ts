@@ -1,11 +1,11 @@
 import { Component, OnInit } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { OrderService } from '../../services/order.service';
+import { DashboardCardComponent } from '../shared/dashboard-card/dashboard-card.component';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [RouterLink],
+  imports: [DashboardCardComponent],
   templateUrl: './home.component.html'
 })
 export class HomeComponent implements OnInit {

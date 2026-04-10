@@ -1,7 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
 import { OptionItem } from '../../models/option-item';
 import { SignatureCupcake } from '../../models/signature-cupcake';
 import { OptionService } from '../../services/option.service';
@@ -20,64 +19,7 @@ interface CategorySection {
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './management.component.html',
-  styles: [`
-    .mgmt-section { border: 1px solid #dee2e6; border-radius: 6px; margin-bottom: 1.25rem; }
-    .mgmt-section-header {
-      background: #f8f9fa;
-      padding: 8px 14px;
-      font-weight: 700;
-      font-size: .85rem;
-      text-transform: uppercase;
-      letter-spacing: .05em;
-      border-bottom: 1px solid #dee2e6;
-      border-radius: 6px 6px 0 0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      cursor: pointer;
-      user-select: none;
-    }
-    .mgmt-section-header:hover { background: #e9ecef; }
-    .mgmt-section-header.collapsed { border-bottom: none; border-radius: 6px; }
-    .collapse-indicator { color: #6c757d; font-size: .9rem; }
-    .mgmt-section-body { padding: 12px 14px; }
-    .option-chip {
-      display: inline-flex; align-items: center; gap: 4px;
-      background: #e9ecef; border-radius: 20px;
-      padding: 3px 10px 3px 12px; font-size: .85rem; margin: 3px;
-    }
-    .option-chip .edit-btn {
-      background: none; border: none; cursor: pointer;
-      color: #6c757d; font-size: .85rem; line-height: 1; padding: 0 2px;
-    }
-    .option-chip .edit-btn:hover { color: #0d6efd; }
-    .option-chip .remove-btn {
-      background: none; border: none; cursor: pointer;
-      color: #6c757d; font-size: 1rem; line-height: 1; padding: 0 2px;
-    }
-    .option-chip .remove-btn:hover { color: #dc3545; }
-    .option-chip .save-btn {
-      background: none; border: none; cursor: pointer;
-      color: #198754; font-size: 1rem; line-height: 1; padding: 0 2px;
-    }
-    .option-chip .save-btn:hover { color: #0a3622; }
-    .option-chip .recheck-btn {
-      background: none; border: none; cursor: pointer;
-      color: #6c757d; font-size: .9rem; line-height: 1; padding: 0 2px;
-    }
-    .option-chip .recheck-btn:hover { color: #0d6efd; }
-    .option-edit-input { border: none; background: transparent; outline: none; width: 110px; font-size: .85rem; }
-    .sortable-th { cursor: pointer; user-select: none; white-space: nowrap; }
-    .sortable-th:hover { background: #f0f0f0; }
-    .sort-indicator { font-size: .7rem; color: #6c757d; margin-left: 2px; }
-    .inactive-chip { opacity: .5; }
-    .sig-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
-    .sig-table th { font-weight: 600; padding: 4px 8px; border-bottom: 2px solid #dee2e6; text-align: left; }
-    .sig-table td { padding: 6px 8px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
-    .sig-table tr:last-child td { border-bottom: none; }
-    .sig-table tr.inactive-row { opacity: .55; }
-    .add-row td { border-bottom: none !important; padding-top: 10px; }
-  `]
+  styleUrls: ['./management.component.css']
 })
 export class ManagementComponent implements OnInit {
   // Option categories
@@ -107,8 +49,7 @@ export class ManagementComponent implements OnInit {
 
   constructor(
     private optionService: OptionService,
-    private sigService: SignatureCupcakeService,
-    private router: Router
+    private sigService: SignatureCupcakeService
   ) { }
 
   ngOnInit() {
@@ -279,7 +220,4 @@ export class ManagementComponent implements OnInit {
       .subscribe(updated => Object.assign(sig, updated));
   }
 
-  editOrder(orderNumber: number) {
-    this.router.navigate(['edit-order'], { queryParams: { orderNumber } });
-  }
 }

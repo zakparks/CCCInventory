@@ -1,0 +1,47 @@
+.bake-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .9rem;
+  margin-bottom: 0;
+}
+.bake-table th {
+  background: #f8f9fa;
+  font-size: .78rem;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  font-weight: 700;
+  padding: 6px 8px;
+  border: 1px solid #dee2e6;
+}
+.bake-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid #efefef;
+  border-left: 1px solid #efefef;
+  border-right: 1px solid #efefef;
+}
+.bake-table tbody tr:hover td { background-color: rgba(0,0,0,.02); }
+.section-title {
+  font-size: .82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #495057;
+  margin: 1.5rem 0 .35rem;
+  padding-bottom: .25rem;
+  border-bottom: 2px solid #dee2e6;
+}
+@media print {
+  .bake-body {
+    column-count: 2;
+    column-gap: 1.5em;
+  }
+  /* Keep each section heading glued to the first row of its table */
+  .section-title { break-after: avoid; margin-top: .8rem; }
+
+  .bake-table { width: 100%; }
+  .bake-table td, .bake-table th {
+    border: 1px solid #555 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

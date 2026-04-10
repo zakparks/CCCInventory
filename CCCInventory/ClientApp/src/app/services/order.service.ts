@@ -16,10 +16,6 @@ export class OrderService {
     return this.http.get<Order[]>(this.baseUrl);
   }
 
-  public GetCancelledOrders(): Observable<Order[]> {
-    return this.http.get<Order[]>(`${this.baseUrl}/cancelled`);
-  }
-
   public GetOrdersByStatus(status: string): Observable<Order[]> {
     return this.http.get<Order[]>(`${this.baseUrl}?status=${status}`);
   }
@@ -43,10 +39,6 @@ export class OrderService {
 
   public RestoreOrder(orderNumber: number): Observable<number> {
     return this.http.put<number>(`${this.baseUrl}/${orderNumber}/restore`, {});
-  }
-
-  public DeleteOrder(orderNumber: number): Observable<number> {
-    return this.http.delete<number>(`${this.baseUrl}/${orderNumber}`);
   }
 
   public GetNewOrderNumber(): Observable<number> {

@@ -143,20 +143,6 @@ namespace CCCInventory.Controllers
             return Ok(order.OrderNumber);
         }
 
-        [HttpGet("cancelled")]
-        public async Task<ActionResult<List<Order>>> GetCancelledOrders()
-        {
-            var now = DateTime.Now;
-            return Ok(await _context.Orders
-                .Where(order => order.CancelledFlag && order.OrderDateTime > now)
-                .Include(o => o.Cakes)
-                .Include(o => o.Cupcakes)
-                .Include(o => o.Cookies)
-                .Include(o => o.Pupcakes)
-                .Include(o => o.OtherItems)
-                .ToListAsync());
-        }
-
         [HttpPut("{orderNumber:int}/cancel")]
         public async Task<ActionResult<int>> CancelOrder(int orderNumber, [FromBody] CancelOrderRequest request)
         {

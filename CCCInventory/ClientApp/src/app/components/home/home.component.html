@@ -2,61 +2,48 @@
 
 <div class="row g-3 mt-2">
   <div class="col-md-4">
-    <div class="card h-100">
-      <div class="card-body">
-        <h5 class="card-title">New Order</h5>
-        <p class="card-text">Create a new customer order.</p>
-        <a routerLink="/edit-order" class="btn btn-primary">Open Order Form</a>
-      </div>
-    </div>
+    <app-dashboard-card
+      title="New Order"
+      description="Create a new customer order."
+      cardLink="/edit-order"
+      buttonText="Open Order Form"
+      buttonClass="btn-primary">
+    </app-dashboard-card>
   </div>
   <div class="col-md-4">
-    <div class="card h-100">
-      <div class="card-body">
-        <h5 class="card-title">All Orders</h5>
-        <p class="card-text">Search and manage existing orders.</p>
-        <a routerLink="/all-orders" class="btn btn-outline-primary">View All Orders</a>
-      </div>
-    </div>
+    <app-dashboard-card
+      title="All Orders"
+      description="Search and manage existing orders."
+      cardLink="/all-orders"
+      buttonText="View All Orders">
+    </app-dashboard-card>
   </div>
   <div class="col-md-4">
-    <div class="card h-100">
-      <div class="card-body">
-        <h5 class="card-title">Incomplete Orders</h5>
-        <p class="card-text">Orders that are missing required information.</p>
-        <a routerLink="/all-orders" [queryParams]="{status: 'incomplete'}" class="btn"
-          [class.btn-danger]="hasIncompleteOrders"
-          [class.btn-outline-primary]="!hasIncompleteOrders">
-          Incomplete Orders
-        </a>
-      </div>
-    </div>
+    <app-dashboard-card
+      title="Incomplete Orders"
+      description="Orders that are missing required information."
+      cardLink="/all-orders"
+      [cardQueryParams]="{status: 'incomplete'}"
+      buttonText="Incomplete Orders"
+      [buttonClass]="hasIncompleteOrders ? 'btn-danger' : 'btn-outline-primary'">
+    </app-dashboard-card>
+  </div>
+  <!-- Calendar card hidden until Google Calendar integration (Phase 10) -->
+  <div class="col-md-4">
+    <app-dashboard-card
+      title="Bake Sheet"
+      description="See what needs to be baked this week."
+      cardLink="/bake-sheet"
+      buttonText="Open Bake Sheet">
+    </app-dashboard-card>
   </div>
   <div class="col-md-4">
-    <div class="card h-100">
-      <div class="card-body">
-        <h5 class="card-title">Calendar</h5>
-        <p class="card-text">See all upcoming orders by date.</p>
-        <a routerLink="/calendar" class="btn btn-outline-primary">Open Calendar</a>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-4">
-    <div class="card h-100">
-      <div class="card-body">
-        <h5 class="card-title">Bake Sheet</h5>
-        <p class="card-text">See what needs to be baked this week.</p>
-        <a routerLink="/bake-sheet" class="btn btn-outline-primary">Open Bake Sheet</a>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-4">
-    <div class="card h-100">
-      <div class="card-body">
-        <h5 class="card-title">Management</h5>
-        <p class="card-text">Manage option lists and signature cupcakes.</p>
-        <a routerLink="/management" class="btn btn-outline-secondary">Open Management</a>
-      </div>
-    </div>
+    <app-dashboard-card
+      title="Management"
+      description="Manage option lists and signature cupcakes."
+      cardLink="/management"
+      buttonText="Open Management"
+      buttonClass="btn-outline-secondary">
+    </app-dashboard-card>
   </div>
 </div>

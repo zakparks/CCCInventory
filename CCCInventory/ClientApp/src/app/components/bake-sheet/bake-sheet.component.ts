@@ -1,6 +1,5 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
 import { BakeSheetService, BakeSheetResponse } from '../../services/bake-sheet.service';
 
 interface BakeRow {
@@ -16,49 +15,7 @@ interface BakeRow {
   standalone: true,
   imports: [CommonModule],
   templateUrl: './bake-sheet.component.html',
-  styles: [`
-    .bake-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: .9rem;
-      margin-bottom: 0;
-    }
-    .bake-table th {
-      background: #f8f9fa;
-      font-size: .78rem;
-      text-transform: uppercase;
-      letter-spacing: .05em;
-      font-weight: 700;
-      padding: 6px 8px;
-      border: 1px solid #dee2e6;
-    }
-    .bake-table td {
-      padding: 5px 8px;
-      border-bottom: 1px solid #efefef;
-      border-left: 1px solid #efefef;
-      border-right: 1px solid #efefef;
-    }
-    .bake-table tbody tr:hover td { background-color: rgba(0,0,0,.02); }
-    .section-title {
-      font-size: .82rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .06em;
-      color: #495057;
-      margin: 1.5rem 0 .35rem;
-      padding-bottom: .25rem;
-      border-bottom: 2px solid #dee2e6;
-    }
-    @media print {
-      .bake-table td, .bake-table th {
-        border: 1px solid #555 !important;
-        /* Force background colors (day highlights, order colors) to print */
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-      }
-      .section-title { margin-top: .8rem; }
-    }
-  `]
+  styleUrls: ['./bake-sheet.component.css']
 })
 export class BakeSheetComponent implements OnInit {
   weekOf = this.isoDate(new Date());
@@ -72,10 +29,11 @@ export class BakeSheetComponent implements OnInit {
   otherRows: BakeRow[] = [];
   orderColorMap = new Map<number, string>();
 
-  private readonly ORDER_COLORS = [
-    '#fff3cd', '#cff4fc', '#d1e7dd', '#f8d7da',
-    '#e2d9f3', '#fde6cc', '#d3e3f5', '#fce4ec'
-  ];
+  // Golden-angle hue rotation: guarantees visually distinct colors with no repeats
+  private orderColor(index: number): string {
+    const hue = Math.round((index * 137.508) % 360);
+    return `hsl(${hue}, 55%, 88%)`;
+  }
 
   private readonly DAY_COLORS: Record<string, string> = {
     'Monday':    '#ffcccc',
@@ -90,7 +48,7 @@ export class BakeSheetComponent implements OnInit {
   private readonly BAKE_DAY_ORDER =
     ['Thursday', 'Friday', 'Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday'];
 
-  constructor(private service: BakeSheetService, private router: Router) { }
+  constructor(private service: BakeSheetService) { }
 
   ngOnInit() { this.load(); }
 
@@ -215,13 +173,17 @@ export class BakeSheetComponent implements OnInit {
       return this.BAKE_DAY_ORDER.indexOf(a.dayOfWeek) - this.BAKE_DAY_ORDER.indexOf(b.dayOfWeek);
     });
 
-    // Assign pastel colors to order numbers that produce multiple bake rows
-    const rowCounts = new Map<number, number>();
-    for (const r of bake) rowCounts.set(r.orderNumber, (rowCounts.get(r.orderNumber) ?? 0) + 1);
+    // Assign colors only to orders whose rows span more than one distinct flavor.
+    // Same-flavor multi-layer cakes already cluster together when sorted — no color needed.
+    const orderFlavors = new Map<number, Set<string>>();
+    for (const r of bake) {
+      if (!orderFlavors.has(r.orderNumber)) orderFlavors.set(r.orderNumber, new Set());
+      orderFlavors.get(r.orderNumber)!.add(r.flavor);
+    }
     const colorMap = new Map<number, string>();
     let ci = 0;
-    for (const [num, count] of rowCounts) {
-      if (count > 1) colorMap.set(num, this.ORDER_COLORS[ci++ % this.ORDER_COLORS.length]);
+    for (const [num, flavors] of orderFlavors) {
+      if (flavors.size > 1) colorMap.set(num, this.orderColor(ci++));
     }
 
     this.bakeRows = bake;
