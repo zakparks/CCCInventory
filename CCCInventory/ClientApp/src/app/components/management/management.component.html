@@ -171,3 +171,114 @@
     </div>
   }
 </div>
+
+<!-- ─── Manage Users ────────────────────────────────────────────── -->
+<div class="mgmt-section">
+  <div class="mgmt-section-header" [class.collapsed]="!usersExpanded"
+       (click)="usersExpanded = !usersExpanded"
+       [title]="usersExpanded ? 'Collapse' : 'Expand'">
+    <span>Manage Users</span>
+    <span class="collapse-indicator">@if (usersExpanded) { &#8743; } @else { &#8744; }</span>
+  </div>
+  @if (usersExpanded) {
+    <div class="mgmt-section-body">
+
+      <!-- Staff Members -->
+      <h6 class="mb-2">Staff Members</h6>
+      @if (staffErrorMsg) {
+        <div class="alert alert-danger py-2 mb-2">{{ staffErrorMsg }}</div>
+      }
+      <table class="sig-table mb-2">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>PIN</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (member of staffMembers; track member.id) {
+            @if (editingStaffId === member.id) {
+              <tr>
+                <td><input class="form-control form-control-sm" [(ngModel)]="editingStaff.name" placeholder="Name" /></td>
+                <td><input class="form-control form-control-sm" [(ngModel)]="editingStaff.pin" placeholder="New PIN (leave blank to keep)" maxlength="4" style="width:160px" /></td>
+                <td>
+                  <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" [(ngModel)]="editingStaff.isActive" [id]="'editActive' + member.id" />
+                    <label class="form-check-label" [for]="'editActive' + member.id">Active</label>
+                  </div>
+                </td>
+                <td class="d-flex gap-1">
+                  <button class="btn btn-sm btn-success" type="button" (click)="saveEditStaff()">Save</button>
+                  <button class="btn btn-sm btn-outline-secondary" type="button" (click)="cancelEditStaff()">Cancel</button>
+                </td>
+              </tr>
+            } @else {
+              <tr [class.inactive-row]="!member.isActive">
+                <td>{{ member.name }}</td>
+                <td>••••</td>
+                <td>
+                  <span class="badge" [class.bg-success]="member.isActive" [class.bg-secondary]="!member.isActive">
+                    {{ member.isActive ? 'Active' : 'Inactive' }}
+                  </span>
+                </td>
+                <td class="d-flex gap-1">
+                  <button class="btn btn-sm btn-outline-secondary" type="button" (click)="startEditStaff(member)">Edit</button>
+                  @if (member.isActive) {
+                    <button class="btn btn-sm btn-outline-danger" type="button" (click)="deactivateStaff(member)">Deactivate</button>
+                  }
+                </td>
+              </tr>
+            }
+          }
+          @if (addingStaff) {
+            <tr class="add-row">
+              <td><input class="form-control form-control-sm" [(ngModel)]="newStaff.name" placeholder="Name" /></td>
+              <td><input class="form-control form-control-sm" [(ngModel)]="newStaff.pin" placeholder="4-digit PIN" maxlength="4" style="width:90px" /></td>
+              <td>
+                <div class="form-check form-switch mb-0">
+                  <input class="form-check-input" type="checkbox" [(ngModel)]="newStaff.isActive" id="newStaffActive" />
+                  <label class="form-check-label" for="newStaffActive">Active</label>
+                </div>
+              </td>
+              <td class="d-flex gap-1">
+                <button class="btn btn-sm btn-success" type="button" (click)="saveNewStaff()">Save</button>
+                <button class="btn btn-sm btn-outline-secondary" type="button" (click)="cancelAddStaff()">Cancel</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      @if (!addingStaff) {
+        <button class="btn btn-sm btn-outline-primary" type="button" (click)="startAddStaff()">+ Add Staff Member</button>
+      }
+
+      <hr class="my-3" />
+
+      <!-- Change Password -->
+      <h6 class="mb-2">Change Password</h6>
+      <div style="max-width: 360px;">
+        <div class="mb-2">
+          <label class="form-label small mb-1">Current Password</label>
+          <input type="password" class="form-control form-control-sm" [(ngModel)]="currentPassword" autocomplete="current-password" />
+        </div>
+        <div class="mb-2">
+          <label class="form-label small mb-1">New Password</label>
+          <input type="password" class="form-control form-control-sm" [(ngModel)]="newPassword" autocomplete="new-password" />
+        </div>
+        <div class="mb-2">
+          <label class="form-label small mb-1">Confirm New Password</label>
+          <input type="password" class="form-control form-control-sm" [(ngModel)]="confirmNewPassword" autocomplete="new-password" />
+        </div>
+        @if (passwordMsg) {
+          <div class="alert py-2 mb-2" [class.alert-success]="!passwordMsgIsError" [class.alert-danger]="passwordMsgIsError">
+            {{ passwordMsg }}
+          </div>
+        }
+        <button class="btn btn-sm btn-primary" type="button" (click)="changePassword()">Update Password</button>
+      </div>
+
+    </div>
+  }
+</div>

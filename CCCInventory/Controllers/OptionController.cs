@@ -1,4 +1,5 @@
 using CCCInventory.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -6,6 +7,7 @@ namespace CCCInventory.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class OptionController : ControllerBase
     {
         private readonly DataContext _context;

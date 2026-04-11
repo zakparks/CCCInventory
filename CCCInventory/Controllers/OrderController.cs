@@ -1,4 +1,6 @@
 using CCCInventory.Data;
+using CCCInventory.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
@@ -7,13 +9,24 @@ namespace CCCInventory.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class OrderController : ControllerBase
     {
         private readonly DataContext _context;
+        private readonly AuditService _audit;
 
-        public OrderController(DataContext context)
+        public OrderController(DataContext context, AuditService audit)
         {
             _context = context;
+            _audit = audit;
+        }
+
+        private async Task<int?> GetStaffMemberIdAsync()
+        {
+            var header = Request.Headers["X-Staff-Member-Id"].FirstOrDefault();
+            if (!int.TryParse(header, out var id)) return null;
+            var exists = await _context.StaffMembers.AnyAsync(s => s.Id == id && s.IsActive);
+            return exists ? id : null;
         }
 
         [HttpGet]
@@ -78,10 +91,21 @@ namespace CCCInventory.Controllers
             return Ok(order);
         }
 
+        [HttpGet("{orderNumber:int}/created-by")]
+        public async Task<IActionResult> GetCreatedBy(int orderNumber)
+        {
+            var log = await _context.AuditLogs
+                .Include(a => a.StaffMember)
+                .Where(a => a.EntityType == "Order" && a.EntityId == orderNumber && a.Action == "Create")
+                .OrderBy(a => a.Timestamp)
+                .FirstOrDefaultAsync();
+
+            return Ok(new { staffName = log?.StaffMember?.Name });
+        }
+
         [HttpGet("newOrderNumber")]
         public async Task<ActionResult<int>> GetNewOrderNumber()
         {
-            // Cast to nullable int so MaxAsync returns null on an empty table instead of throwing
             int? max = await _context.Orders.MaxAsync(order => (int?)order.OrderNumber);
             return Ok((max ?? 0) + 1);
         }
@@ -93,6 +117,9 @@ namespace CCCInventory.Controllers
                 return BadRequest(ModelState);
 
             _context.Orders.Add(order);
+            await _context.SaveChangesAsync(); // EF assigns OrderNumber here
+
+            _audit.PrepareLog(await GetStaffMemberIdAsync(), "Order", order.OrderNumber, "Create");
             await _context.SaveChangesAsync();
 
             return Ok(order.OrderNumber);
@@ -104,9 +131,6 @@ namespace CCCInventory.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            // Load WITHOUT Include — using Include causes EF to track the existing child entities,
-            // and assigning the incoming collection (which carries the same IDs) produces an
-            // identity-conflict exception from the change tracker.
             var dbOrder = await _context.Orders
                 .FirstOrDefaultAsync(o => o.OrderNumber == order.OrderNumber);
 
@@ -115,14 +139,12 @@ namespace CCCInventory.Controllers
 
             using var transaction = await _context.Database.BeginTransactionAsync();
 
-            // Update scalar properties on the tracked Order row
             foreach (PropertyInfo property in typeof(Order).GetProperties()
                 .Where(p => p.CanWrite && !IsNavigationCollection(p)))
             {
                 property.SetValue(dbOrder, property.GetValue(order, null), null);
             }
 
-            // Delete old child rows directly (bypasses the change tracker — no identity conflict)
             int oNum = order.OrderNumber;
             await _context.Cakes      .Where(c => EF.Property<int?>(c, "OrderNumber") == oNum).ExecuteDeleteAsync();
             await _context.Cupcakes   .Where(c => EF.Property<int?>(c, "OrderNumber") == oNum).ExecuteDeleteAsync();
@@ -130,13 +152,13 @@ namespace CCCInventory.Controllers
             await _context.Pupcakes   .Where(c => EF.Property<int?>(c, "OrderNumber") == oNum).ExecuteDeleteAsync();
             await _context.OtherItems .Where(c => EF.Property<int?>(c, "OrderNumber") == oNum).ExecuteDeleteAsync();
 
-            // Assign incoming collections — reset Ids to 0 so EF generates new primary keys
             dbOrder.Cakes      = order.Cakes?      .Select(c => { c.Id = 0; return c; }).ToList();
             dbOrder.Cupcakes   = order.Cupcakes?   .Select(c => { c.Id = 0; return c; }).ToList();
             dbOrder.Cookies    = order.Cookies?    .Select(c => { c.Id = 0; return c; }).ToList();
             dbOrder.Pupcakes   = order.Pupcakes?   .Select(c => { c.Id = 0; return c; }).ToList();
             dbOrder.OtherItems = order.OtherItems? .Select(c => { c.Id = 0; return c; }).ToList();
 
+            _audit.PrepareLog(await GetStaffMemberIdAsync(), "Order", order.OrderNumber, "Update");
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
@@ -153,6 +175,7 @@ namespace CCCInventory.Controllers
             dbOrder.CancelledFlag = true;
             dbOrder.CancellationReason = request.CancellationReason;
             dbOrder.CancelledAt = DateTime.Now;
+            _audit.PrepareLog(await GetStaffMemberIdAsync(), "Order", orderNumber, "Archive", request.CancellationReason);
             await _context.SaveChangesAsync();
             return Ok(orderNumber);
         }
@@ -167,6 +190,7 @@ namespace CCCInventory.Controllers
             dbOrder.CancelledFlag = false;
             dbOrder.CancellationReason = null;
             dbOrder.CancelledAt = null;
+            _audit.PrepareLog(await GetStaffMemberIdAsync(), "Order", orderNumber, "Restore");
             await _context.SaveChangesAsync();
             return Ok(orderNumber);
         }
@@ -178,7 +202,6 @@ namespace CCCInventory.Controllers
             if (dbOrder == null)
                 return NotFound($"Order {orderNumber} not found");
 
-            // Hard delete — permanent removal
             _context.Orders.Remove(dbOrder);
             await _context.SaveChangesAsync();
 

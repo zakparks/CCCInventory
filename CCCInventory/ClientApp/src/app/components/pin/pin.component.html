@@ -1,0 +1,41 @@
+<div class="d-flex justify-content-center align-items-center" style="min-height: 100vh; background: #f8f9fa;">
+  <div class="card shadow" style="width: 380px;">
+    <div class="card-body p-4">
+      <h4 class="card-title text-center mb-4">Enter PIN</h4>
+
+      <div class="mb-3">
+        <input #pinInput type="password" class="form-control form-control-lg text-center"
+          inputmode="numeric" maxlength="4"
+          [(ngModel)]="enteredPin"
+          (input)="onPinInput()"
+          placeholder="● ● ● ●"
+          autocomplete="off"
+          [disabled]="validating" />
+      </div>
+
+      @if (errorMessage) {
+        <div class="alert alert-danger py-2 text-center mb-3">{{ errorMessage }}</div>
+      }
+
+      <!-- Numpad -->
+      <div class="d-grid gap-2" style="grid-template-columns: repeat(3, 1fr); display: grid;">
+        @for (digit of ['1','2','3','4','5','6','7','8','9','','0','⌫']; track $index) {
+          @if (digit === '⌫') {
+            <button type="button" class="btn btn-outline-secondary py-3" (click)="backspace()" [disabled]="validating">⌫</button>
+          } @else if (digit === '') {
+            <span></span>
+          } @else {
+            <button type="button" class="btn btn-outline-primary py-3 fs-5" (click)="appendDigit(digit)" [disabled]="validating">{{ digit }}</button>
+          }
+        }
+      </div>
+
+      @if (validating) {
+        <div class="text-center mt-3"><span class="spinner-border spinner-border-sm"></span></div>
+      }
+    </div>
+    <div class="card-footer text-center py-2">
+      <button type="button" class="btn btn-link btn-sm text-muted" (click)="logout()">Log Out</button>
+    </div>
+  </div>
+</div>

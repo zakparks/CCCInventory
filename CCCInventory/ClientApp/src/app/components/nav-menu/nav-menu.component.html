@@ -40,6 +40,11 @@
           <li class="nav-item">
             <a class="nav-link text-dark" [routerLink]="['/management']" [routerLinkActive]="['link-active']">Management</a>
           </li>
+          @if (pinActive) {
+            <li class="nav-item d-flex align-items-center ms-2">
+              <button type="button" class="btn btn-outline-secondary btn-sm" (click)="switchUser()">{{ activeStaffName }} - Switch User</button>
+            </li>
+          }
         </ul>
       </div>
     </div>

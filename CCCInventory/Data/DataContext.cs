@@ -17,5 +17,28 @@ namespace CCCInventory.Data
         public DbSet<OptionItem> OptionItems => Set<OptionItem>();
         public DbSet<SignatureCupcake> SignatureCupcakes => Set<SignatureCupcake>();
         public DbSet<OtherItem> OtherItems => Set<OtherItem>();
+
+        // Auth
+        public DbSet<AppUser> AppUsers => Set<AppUser>();
+        public DbSet<StaffMember> StaffMembers => Set<StaffMember>();
+        public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<AppUser>()
+                .HasIndex(u => u.Username)
+                .IsUnique();
+
+            modelBuilder.Entity<AuditLog>()
+                .HasOne(a => a.StaffMember)
+                .WithMany()
+                .HasForeignKey(a => a.StaffMemberId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<AuditLog>()
+                .HasIndex(a => new { a.EntityType, a.EntityId });
+        }
     }
 }

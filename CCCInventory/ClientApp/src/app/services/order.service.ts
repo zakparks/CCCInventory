@@ -41,6 +41,10 @@ export class OrderService {
     return this.http.put<number>(`${this.baseUrl}/${orderNumber}/restore`, {});
   }
 
+  public GetCreatedBy(orderNumber: number): Observable<{ staffName: string | null }> {
+    return this.http.get<{ staffName: string | null }>(`${this.baseUrl}/${orderNumber}/created-by`);
+  }
+
   public GetNewOrderNumber(): Observable<number> {
     return this.http.get<number>(`${this.baseUrl}/newOrderNumber`);
   }

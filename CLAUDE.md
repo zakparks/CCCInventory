@@ -57,95 +57,18 @@ Two small items from Phase 5 were not implemented:
 
 ## Remaining Phases
 
-### Priority Order (as of 2026-04-10)
-
-| Priority | Work item |
-|---|---|
-| 1 | Fix known gaps: attachment carousel + CookieSize in management |
-| 2 | Phase 9 — Authentication (blocker for go-live) |
-| 3 | Phase 15 — Deployment & DevOps |
-| 4 | Phase 10 — Google Calendar (post-launch) |
-| 5 | Phase 8 — Party Rentals (backburnered, post-launch) |
-| 6 | Phase 11 — Google Maps (post-launch) |
-| 7 | Phase 12 — Historical Import (post-launch) |
-| 8 | Phase 13 — Pricing (needs design; post-launch) |
-| 9 | Phase 14 — Mobile Optimization (post-launch) |
-| 10 | Phase 16 — Polish (ongoing) |
+Phases are numbered in execution order. Known gaps (attachment carousel + CookieSize in management) are pre-phase fixes that ship before Phase 8.
 
 ---
 
-### Phase 8 — Party Rentals *(backburnered — post-launch)*
-
-New independent feature. New backend models, controller, Angular route, management items.
-
-**Models:**
-- `PartyRental`: Name, Phone, Email, Type (FK→OptionItem "Party Rental Types"), DateOfEvent, StartTime, EndTime, NumberOfGuests, RoomArrangementId (FK→`RoomArrangement`), BaseRentalRate, AdditionalHours, AdditionalHourlyRate, `ICollection<PartyRentalAddOn>`
-- `PartyRentalAddOn`: AddOnType (FK→OptionItem "Party Rental Add-Ons"), Price (decimal, prefilled from management config, editable), Notes
-- `RoomArrangement`: Label, ImagePath, IsActive
-
-**Management additions:**
-- Party Rental Types (option list — same pattern as other categories)
-- Party Rental Add-Ons (option list with configurable default price per item)
-- Base Rental Rate (single numeric config value)
-- Additional Hourly Rate (single numeric config value)
-- Room Arrangements (image + label — upload image, set label, activate/deactivate)
-
-**Booking page** at `/party-rental/new` (edit: `/party-rental/:id`):
-- *Booking Info section:* Name, Phone, Email, Type dropdown, Date of Event, Start/End Time (two time pickers), Number of Guests, Room Arrangement (image tile selector — large radio-button-style tiles)
-- *Cost section:* Base Rental Rate (prefilled, editable); Additional Hours shown as `"[$rate] × [N] hours"` (max 2-digit input)
-- *Add-Ons section:* add/remove rows with Add-On Type dropdown, Price (prefilled, editable), Notes
-
-**Google Calendar:** Party Rentals appear at their actual scheduled start time (unlike orders, which stack from midnight).
-
-**Google Doc auto-fill (wishlist/post-launch):** Copy master Google Doc template → rename to "Name - Date" → fill fields → route for digital signature via Google Workspace. Requires Drive + Docs API OAuth; confirm template and field mapping before scoping. Do not build until after launch.
-
-### Phase 9 — Authentication
+### Phase 8 — Authentication *(go-live blocker)*
 
 - **Primary:** ASP.NET Core Identity + JWT in `HttpOnly` cookie with long expiry (stays logged in at shop like YouTube/Facebook)
 - **Secondary PIN:** 4-digit PIN per named staff member record; inactivity timeout (configurable, default ~minutes) soft-logs out to PIN screen without clearing primary JWT; any staff member can enter their PIN to resume
 - **Staff management:** "Manage Users" section on Management page — list of staff names with editable PIN (explicitly non-secure, plain text is appropriate)
 - **Audit trail:** `AuditLog` table — staff member (from active PIN session), entity type + ID, field changed (from→to), timestamp; enables detecting malicious changes and rolling back data entry errors
 
-### Phase 10 — Google Calendar Integration
-
-**Prerequisites:** Cloudflare Tunnel + domain live before implementing — OAuth redirect URI must be a public HTTPS URL.
-- Production URL: `https://orders.canonsburgcakecompany.com`
-- OAuth redirect URI: `https://orders.canonsburgcakecompany.com/api/google/callback`
-
-**Event format:**
-- Title: `"OrderNumber - Title - FirstName LastName"`
-- Color key: Blue=cakes, Purple=cupcakes/cookies/pupcakes (mixed non-cake orders use Purple), Green=ready for pickup, Red=cancelled/archived, Yellow=delivery. Cakes take color priority over all others.
-- Timing: orders stack from midnight on their due date in creation order, 30 min each. Party Rentals appear at actual scheduled start time.
-
-**Implementation:** Add `GoogleCalendarEventId` to `Order` + migration; `GoogleCalendarService` (token storage, create/update/delete); `GoogleCalendarController` (`/authorize`, `/callback`, `/status`, `/disconnect`); hook into `OrderController` on every create/update/archive.
-
-**Removes `/calendar` route and `CalendarComponent` once live.** Until then the built-in calendar remains as temporary infrastructure.
-
-### Phase 11 — Google Maps
-
-- Google Maps Places Autocomplete on the delivery address field (`@angular/google-maps`)
-- On save, generate `DeliveryMapsUrl` (`https://www.google.com/maps/dir/?api=1&destination=<addr>`) and store on the order
-- Display as clickable link in edit form and in Google Calendar event description (Phase 10)
-
-### Phase 12 — Historical Order Bulk Import
-
-Paper forms scanned to Google Drive as PDFs. Filename pattern: `OrderNumber - LastName FirstName.pdf` (exact pattern to be confirmed against actual Drive folder before writing parser).
-
-**Backend** `POST /api/order/import-files`: parse filename → create minimal `Order` (order number + name only, skip required field validation) → attach PDF as `OrderAttachment`. Return per-file result with created/duplicate/failed counts.
-
-**Frontend** (Management page, new section): multi-file picker or drag-and-drop, preview table before submit, progress indicator, results summary.
-
-Historical imports bypass `GetNewOrderNumber()` — use explicit number from filename. `MAX + 1` naturally continues after import.
-
-### Phase 13 — Pricing
-
-⚠ Needs full pricing requirements from the bakery before building. Placeholder fields (`Labor`, `FlavorUpgrade`, `LookbookPrice`) already exist on the model and form. Configuration, auto-calculation logic, and additional fields are TBD.
-
-### Phase 14 — Mobile Optimization
-
-Post-launch, after all other features. Responsive layout for phone and tablet. MVP is explicitly desktop-only.
-
-### Phase 15 — Deployment & Hosting
+### Phase 9 — Deployment & Hosting *(go-live blocker)*
 
 **Architecture:**
 ```
@@ -171,7 +94,7 @@ Public internet ──HTTPS──► Cloudflare edge ──► orders.canonsburg
 
 **CI/CD:** Self-hosted GitHub Actions runner installed as a Windows Service on bakery PC. Push to `main` triggers: `ng build --configuration production` → `dotnet publish` → stop service → swap files → `Database.Migrate()` bundle → restart service.
 
-**⚠ Phase 9 (auth) must be complete before the public URL goes live.**
+**⚠ Phase 8 (auth) must be complete before the public URL goes live.**
 
 **One-time setup checklist:**
 1. Purchase bakery PC; install Windows + SQL Server Express
@@ -182,7 +105,109 @@ Public internet ──HTTPS──► Cloudflare edge ──► orders.canonsburg
 6. Publish .NET app as self-contained `win-x64` Windows Service; install with `sc.exe`
 7. Configure Google OAuth redirect URI once domain is live (prerequisite for Phase 10)
 
-### Phase 16 — Polish
+### Phase 10 — Google Calendar Integration *(post-launch)*
+
+**Prerequisites:** Cloudflare Tunnel + domain live before implementing — OAuth redirect URI must be a public HTTPS URL.
+- Production URL: `https://orders.canonsburgcakecompany.com`
+- OAuth redirect URI: `https://orders.canonsburgcakecompany.com/api/google/callback`
+
+**Event format:**
+- Title: `"OrderNumber - Title - FirstName LastName"`
+- Color key: Blue=cakes, Purple=cupcakes/cookies/pupcakes (mixed non-cake orders use Purple), Green=ready for pickup, Red=cancelled/archived, Yellow=delivery. Cakes take color priority over all others.
+- Timing: orders stack from midnight on their due date in creation order, 30 min each. Party Rentals appear at actual scheduled start time.
+
+**Implementation:** Add `GoogleCalendarEventId` to `Order` + migration; `GoogleCalendarService` (token storage, create/update/delete); `GoogleCalendarController` (`/authorize`, `/callback`, `/status`, `/disconnect`); hook into `OrderController` on every create/update/archive.
+
+**Removes `/calendar` route and `CalendarComponent` once live.** Until then the built-in calendar remains as temporary infrastructure.
+
+### Phase 11 — Party Rentals *(backburnered — post-launch)*
+
+New independent feature. New backend models, controller, Angular route, management items.
+
+**Models:**
+- `PartyRental`: Name, Phone, Email, Type (FK→OptionItem "Party Rental Types"), DateOfEvent, StartTime, EndTime, NumberOfGuests, RoomArrangementId (FK→`RoomArrangement`), BaseRentalRate, AdditionalHours, AdditionalHourlyRate, `ICollection<PartyRentalAddOn>`
+- `PartyRentalAddOn`: AddOnType (FK→OptionItem "Party Rental Add-Ons"), Price (decimal, prefilled from management config, editable), Notes
+- `RoomArrangement`: Label, ImagePath, IsActive
+
+**Management additions:**
+- Party Rental Types (option list — same pattern as other categories)
+- Party Rental Add-Ons (option list with configurable default price per item)
+- Base Rental Rate (single numeric config value)
+- Additional Hourly Rate (single numeric config value)
+- Room Arrangements (image + label — upload image, set label, activate/deactivate)
+
+**Booking page** at `/party-rental/new` (edit: `/party-rental/:id`):
+- *Booking Info section:* Name, Phone, Email, Type dropdown, Date of Event, Start/End Time (two time pickers), Number of Guests, Room Arrangement (image tile selector — large radio-button-style tiles)
+- *Cost section:* Base Rental Rate (prefilled, editable); Additional Hours shown as `"[$rate] × [N] hours"` (max 2-digit input)
+- *Add-Ons section:* add/remove rows with Add-On Type dropdown, Price (prefilled, editable), Notes
+
+**Google Calendar:** Party Rentals appear at their actual scheduled start time (unlike orders, which stack from midnight).
+
+**Google Doc auto-fill (wishlist/post-launch):** Copy master Google Doc template → rename to "Name - Date" → fill fields → route for digital signature via Google Workspace. Requires Drive + Docs API OAuth; confirm template and field mapping before scoping. Do not build until after launch.
+
+### Phase 12 — Historical Order Bulk Import *(post-launch)*
+
+Paper forms scanned to Google Drive as PDFs. Filename pattern: `OrderNumber - LastName FirstName.pdf` (exact pattern to be confirmed against actual Drive folder before writing parser).
+
+**Backend** `POST /api/order/import-files`: parse filename → create minimal `Order` (order number + name only, skip required field validation) → attach PDF as `OrderAttachment`. Return per-file result with created/duplicate/failed counts.
+
+**Frontend** (Management page, new section): multi-file picker or drag-and-drop, preview table before submit, progress indicator, results summary.
+
+Historical imports bypass `GetNewOrderNumber()` — use explicit number from filename. `MAX + 1` naturally continues after import.
+
+### Phase 13 — Pricing *(post-launch)*
+
+⚠ Needs full pricing requirements from the bakery before building. Placeholder fields (`Labor`, `FlavorUpgrade`, `LookbookPrice`) already exist on the model and form. Configuration, auto-calculation logic, and additional fields are TBD.
+
+### Phase 14 — Customer Profiles & Autocomplete *(post-launch)*
+
+New `Customer` entity + autocomplete on the order form + Customers page.
+
+**`Customer` model:** `CustomerId`, `FirstName`, `LastName`, `Email`, `Phone`
+
+**`Order` change:** add nullable `CustomerId` FK. Order keeps its own `FirstName`/`LastName`/`Email`/`Phone` fields (denormalized snapshot at time of order — Customer record is the current source of truth, order fields are historical).
+
+**Autocomplete on order form:**
+- On `LastName` field blur → `GET /api/customer/search?name=...`
+- Dropdown shows Name + Phone + Email for disambiguation (handles same-name customers)
+- Selecting a result fills all four contact fields + stores a hidden `customerId` on the form
+- Dismissing the dropdown leaves fields as typed
+
+**Customer matching on order save:**
+- Email blank → skip customer logic entirely; `CustomerId` stays null (walk-in/quick orders with no email float without a customer link — by design)
+- Email present → find `Customer` by email
+  - Found → link order to existing customer; optionally update their name/phone if changed
+  - Not found → create new `Customer` from the order's contact fields, link
+
+**Customers page** (`/customers`):
+- Search/list view of all customers who have an email on file
+- Customer detail: editable contact info + full order history with status indicators
+- "New Order" button → navigates to new order form pre-filled with customer data
+
+**Notes:**
+- Historical imports (Phase 12): no backfill needed; data integrity addressed post-import if desired
+- Email is the unique match key — two people with the same name but different emails are correctly separate customers
+
+### Phase 15 — Mobile Optimization *(post-launch)*
+
+Post-launch, after all other features. Responsive layout for phone and tablet. MVP is explicitly desktop-only.
+
+### Phase 16 — Google Maps *(post-launch)*
+
+- Google Maps Places Autocomplete on the delivery address field (`@angular/google-maps`)
+- On save, generate `DeliveryMapsUrl` (`https://www.google.com/maps/dir/?api=1&destination=<addr>`) and store on the order
+- Display as clickable link in edit form and in Google Calendar event description (Phase 10)
+
+### Phase 17 — Polish *(ongoing)*
 
 - Print-friendly single-order view replicating the paper form layout
-- Customer history: view all orders for a given customer by name/email
+
+### Phase 18 — Feature Requests *(catch-all for nice-to-haves)*
+
+Unscoped ideas that came up during development. Requires proper requirements gathering before building.
+
+**Order Audit / History view**
+- A timeline per order showing who created it, who edited it, and when — data is partially there (AuditLog records Create/Update/Archive/Restore with staff + timestamp)
+- Field-level diffs ("Customer Name: John → Jane") are not yet stored — `Details` column exists but is always null; would need diff logic added to `UpdateOrder` before any historical data is captured
+- Autosave currently generates an Update entry every time it fires, so collapsing nearby entries into a single "editing session" would be needed for readability
+- UI options: button on All Orders row or on the open order form to open a history panel/modal

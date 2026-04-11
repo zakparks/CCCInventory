@@ -33,6 +33,8 @@ export class EditOrderComponent implements OnInit, OnDestroy {
   cookieSizes: string[] = [];
   signatures: SignatureCupcake[] = [];
 
+  createdByStaffName: string | null = null;
+
   // Archive modal state
   showArchiveModal: boolean = false;
   archiveCancellationReason: string = '';
@@ -202,13 +204,16 @@ export class EditOrderComponent implements OnInit, OnDestroy {
       } else {
         this.orderToEdit = result;
         this.loadAttachments(result.orderNumber!);
+        this.orderService.GetCreatedBy(result.orderNumber!).subscribe(r => {
+          this.createdByStaffName = r.staffName;
+        });
       }
       this.initOrderFormGroup();
     });
 
     // Autosave: save after 4 seconds of inactivity when any meaningful field has data
     this.editOrderFormGroup.valueChanges.pipe(
-      debounceTime(4000),
+      debounceTime(15000),
       filter(val => {
         const { orderNumber, dateOrderPlaced, ...rest } = val;
         return Object.values(rest).some(v =>

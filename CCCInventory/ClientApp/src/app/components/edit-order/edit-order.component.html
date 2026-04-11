@@ -634,7 +634,7 @@
   </div>
 
   <!-- Action buttons -->
-  <div class="d-flex gap-2 mt-3 mb-5">
+  <div class="d-flex gap-2 align-items-center mt-3 mb-5">
     @if (createOrUpdate === 'Update') {
       <button (click)="onUpdateOrderClicked()" type="submit" class="btn btn-lg btn-outline-success">
         Update Order
@@ -653,6 +653,9 @@
       <button (click)="onCreateOrderClicked()" type="submit" class="btn btn-lg btn-outline-success">
         Create Order
       </button>
+    }
+    @if (createdByStaffName) {
+      <span class="ms-auto text-muted small">Created by {{ createdByStaffName }}</span>
     }
   </div>
 

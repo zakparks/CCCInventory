@@ -5,6 +5,8 @@ import { OptionItem } from '../../models/option-item';
 import { SignatureCupcake } from '../../models/signature-cupcake';
 import { OptionService } from '../../services/option.service';
 import { SignatureCupcakeService } from '../../services/signature-cupcake.service';
+import { StaffMember, StaffService } from '../../services/staff.service';
+import { AuthService } from '../../services/auth.service';
 
 interface CategorySection {
   key: string;
@@ -31,12 +33,29 @@ export class ManagementComponent implements OnInit {
     { key: 'IcingFlavor',   label: 'Icing Flavors',            expanded: false, items: [], newValue: '' },
     { key: 'CupcakeSize',   label: 'Cupcake Sizes',            expanded: false, items: [], newValue: '' },
     { key: 'CookieType',    label: 'Cookie Types',             expanded: false, items: [], newValue: '' },
+    { key: 'CookieSize',    label: 'Cookie Sizes',             expanded: false, items: [], newValue: '' },
   ];
 
   // Option item inline edit
   editingOptionId: number | null = null;
   editingOptionValue: string = '';
   errorMsg: string = '';
+
+  // ─── Staff Members ────────────────────────────────────────────────────────
+  usersExpanded = false;
+  staffMembers: StaffMember[] = [];
+  editingStaffId: number | null = null;
+  editingStaff: Partial<StaffMember> = {};
+  newStaff: Partial<StaffMember> = { isActive: true };
+  addingStaff = false;
+  staffErrorMsg = '';
+
+  // Change password
+  currentPassword = '';
+  newPassword = '';
+  confirmNewPassword = '';
+  passwordMsg = '';
+  passwordMsgIsError = false;
 
   // Signature cupcakes
   sigExpanded = false;
@@ -49,12 +68,15 @@ export class ManagementComponent implements OnInit {
 
   constructor(
     private optionService: OptionService,
-    private sigService: SignatureCupcakeService
+    private sigService: SignatureCupcakeService,
+    private staffService: StaffService,
+    private authService: AuthService
   ) { }
 
   ngOnInit() {
     this.loadOptions();
     this.loadSignatures();
+    this.loadStaff();
   }
 
   // ─── Options ─────────────────────────────────────────────────────────────
@@ -218,6 +240,122 @@ export class ManagementComponent implements OnInit {
   toggleSigActive(sig: SignatureCupcake) {
     this.sigService.update(sig.id, { ...sig, isActive: !sig.isActive })
       .subscribe(updated => Object.assign(sig, updated));
+  }
+
+  // ─── Staff Members ────────────────────────────────────────────────────────
+
+  loadStaff() {
+    this.staffService.getAll().subscribe(s => this.staffMembers = s);
+  }
+
+  startAddStaff() {
+    this.newStaff = { isActive: true };
+    this.addingStaff = true;
+    this.editingStaffId = null;
+  }
+
+  cancelAddStaff() {
+    this.addingStaff = false;
+    this.newStaff = { isActive: true };
+    this.staffErrorMsg = '';
+  }
+
+  saveNewStaff() {
+    if (!this.newStaff.name?.trim() || !this.newStaff.pin?.trim()) {
+      this.staffErrorMsg = 'Name and PIN are required.';
+      return;
+    }
+    this.staffService.create(this.newStaff as Omit<StaffMember, 'id'>).subscribe({
+      next: created => {
+        this.staffMembers.push(created);
+        this.addingStaff = false;
+        this.newStaff = { isActive: true };
+        this.staffErrorMsg = '';
+      },
+      error: err => { this.staffErrorMsg = err.error?.message ?? 'Failed to add staff member.'; }
+    });
+  }
+
+  startEditStaff(member: StaffMember) {
+    this.editingStaffId = member.id;
+    // Don't copy pin — it's not in the GET response; leave blank so user only fills it to change it
+    this.editingStaff = { id: member.id, name: member.name, isActive: member.isActive };
+    this.addingStaff = false;
+    this.staffErrorMsg = '';
+  }
+
+  cancelEditStaff() {
+    this.editingStaffId = null;
+    this.editingStaff = {};
+    this.staffErrorMsg = '';
+  }
+
+  saveEditStaff() {
+    if (!this.editingStaff.name?.trim()) {
+      this.staffErrorMsg = 'Name is required.';
+      return;
+    }
+    // If a new PIN was entered, validate format; if blank, omit so backend keeps the existing PIN
+    const pin = this.editingStaff.pin?.trim();
+    if (pin && (pin.length !== 4 || !/^\d{4}$/.test(pin))) {
+      this.staffErrorMsg = 'PIN must be exactly 4 digits.';
+      return;
+    }
+    const payload: StaffMember = { ...this.editingStaff as StaffMember };
+    if (!pin) delete payload.pin;
+
+    this.staffService.update(this.editingStaffId!, payload).subscribe({
+      next: updated => {
+        const idx = this.staffMembers.findIndex(s => s.id === updated.id);
+        if (idx >= 0) this.staffMembers[idx] = updated;
+        this.editingStaffId = null;
+        this.editingStaff = {};
+        this.staffErrorMsg = '';
+      },
+      error: err => { this.staffErrorMsg = err.error?.message ?? 'Failed to update staff member.'; }
+    });
+  }
+
+  toggleStaffActive(member: StaffMember) {
+    this.staffService.update(member.id, { ...member, isActive: !member.isActive })
+      .subscribe(updated => Object.assign(member, updated));
+  }
+
+  deactivateStaff(member: StaffMember) {
+    if (!confirm(`Deactivate staff member "${member.name}"? They can be reactivated later.`)) return;
+    this.staffService.deactivate(member.id).subscribe(updated => {
+      const idx = this.staffMembers.findIndex(s => s.id === updated.id);
+      if (idx >= 0) this.staffMembers[idx] = updated;
+    });
+  }
+
+  // ─── Change Password ──────────────────────────────────────────────────────
+
+  changePassword() {
+    this.passwordMsg = '';
+    if (!this.currentPassword || !this.newPassword) {
+      this.passwordMsg = 'All fields are required.';
+      this.passwordMsgIsError = true;
+      return;
+    }
+    if (this.newPassword !== this.confirmNewPassword) {
+      this.passwordMsg = 'New passwords do not match.';
+      this.passwordMsgIsError = true;
+      return;
+    }
+    this.authService.changePassword(this.currentPassword, this.newPassword).subscribe({
+      next: res => {
+        this.passwordMsg = res.message;
+        this.passwordMsgIsError = false;
+        this.currentPassword = '';
+        this.newPassword = '';
+        this.confirmNewPassword = '';
+      },
+      error: err => {
+        this.passwordMsg = err.error?.message ?? 'Failed to change password.';
+        this.passwordMsgIsError = true;
+      }
+    });
   }
 
 }
