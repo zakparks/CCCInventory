@@ -39,6 +39,33 @@ export class EditOrderComponent implements OnInit, OnDestroy {
   showArchiveModal: boolean = false;
   archiveCancellationReason: string = '';
 
+  // Attachment carousel state
+  carouselOpen: boolean = false;
+  carouselIndex: number = 0;
+
+  get imageAttachments(): OrderAttachment[] {
+    return this.attachments.filter(a => a.contentType.startsWith('image/'));
+  }
+
+  openCarousel(attachment: OrderAttachment): void {
+    const idx = this.imageAttachments.findIndex(a => a.id === attachment.id);
+    this.carouselIndex = idx >= 0 ? idx : 0;
+    this.carouselOpen = true;
+  }
+
+  closeCarousel(): void {
+    this.carouselOpen = false;
+  }
+
+  carouselPrev(): void {
+    const len = this.imageAttachments.length;
+    this.carouselIndex = (this.carouselIndex - 1 + len) % len;
+  }
+
+  carouselNext(): void {
+    this.carouselIndex = (this.carouselIndex + 1) % this.imageAttachments.length;
+  }
+
   // Incomplete-order warning modal state
   showIncompleteWarning: boolean = false;
 

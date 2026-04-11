@@ -41,13 +41,12 @@
 | 5 | Order form overhaul — `Title`, `CancellationReason`, `CancelledFlag`, `IsReadyForPickup`, `Labor`/`FlavorUpgrade`/`LookbookPrice`, `Flavor2`, `LayerFlavors` (JSON), `CookieSize`, `OtherItem`; 3-col grid; split date/time; Tasting radio; 4 toggles; Archive modal (required reason) + Restore flow; autosave (4 s debounce); incomplete detection 10+ conditions; red field highlighting; cake A/B/C labels; auto-notes on cake add; per-layer flavors; half-and-half; cookie size dropdown; Other item type; attachment upload from new order (auto-saves first) |
 | 6 | All Orders & Homepage — sortable columns, Date column, status toggle (Active / Incomplete / Ready for Pickup / Cancelled / Archived), default Active, red Incomplete badge, auto-archive derived at query time |
 | 7 | Bake sheet redesign — per-layer rows, cakes+cupcakes combined, Thu–Wed bake week, day-of-week color highlights (Mon=red…Sat=purple), order # pastel color coding, Micro/Quarter Sheet special display rules, Other items at bottom, print layout with gridlines |
+| 8 | Authentication — ASP.NET Core Identity + JWT HttpOnly cookie; 4-digit PIN per staff member; inactivity timeout → PIN screen; staff management in Management page; AuditLog table |
+| pre-9 | Pre-phase fixes — attachment carousel modal (click image thumbnail → full-size modal w/ prev/next); CookieSize already present in management categories |
 
 ### Known Gaps in Completed Phases
 
-Two small items from Phase 5 were not implemented:
-
-1. **Attachment modal carousel** (`edit-order.component.html`): clicking an attachment thumbnail opens it in a new tab via a "View" button. The modal/carousel (spec: click thumbnail → modal shows image at full size; multiple images → carousel) is not built.
-2. **CookieSize in Management UI** (`management.component.ts` `categories` array): the `CookieSize` option category is seeded in `SeedData.cs` and loaded by the order form, but is absent from the `categories` array in `ManagementComponent`. Users cannot add/rename/deactivate cookie sizes through the UI.
+None — all known gaps resolved as of 2026-04-11.
 
 ### Calendar UI
 
@@ -57,7 +56,7 @@ Two small items from Phase 5 were not implemented:
 
 ## Remaining Phases
 
-Phases are numbered in execution order. Known gaps (attachment carousel + CookieSize in management) are pre-phase fixes that ship before Phase 8.
+Phases are numbered in execution order.
 
 ---
 

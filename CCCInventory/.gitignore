@@ -201,6 +201,9 @@ UpgradeLog*.htm
 *.db-shm
 *.db-wal
 
+# Uploaded order attachments
+attachments/
+
 # Business Intelligence projects
 *.rdl.data
 *.bim.layout

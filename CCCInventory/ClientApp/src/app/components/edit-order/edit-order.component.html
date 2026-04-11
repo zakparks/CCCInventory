@@ -574,8 +574,9 @@
       <div class="card" style="width: 150px;">
         @if (attachment.contentType.startsWith('image/')) {
           <img [src]="attachmentService.GetFileUrl(attachment.id)"
-            class="card-img-top" style="height: 100px; object-fit: cover;"
-            [alt]="attachment.fileName" />
+            class="card-img-top" style="height: 100px; object-fit: cover; cursor: pointer;"
+            [alt]="attachment.fileName"
+            (click)="openCarousel(attachment)" />
         } @else {
           <div class="d-flex align-items-center justify-content-center bg-light"
             style="height: 100px; font-size: 2.5rem;">
@@ -587,8 +588,13 @@
             {{ attachment.fileName }}
           </p>
           <div class="d-flex gap-1">
-            <a [href]="attachmentService.GetFileUrl(attachment.id)" target="_blank"
-              class="btn btn-sm btn-outline-primary flex-grow-1">View</a>
+            @if (attachment.contentType.startsWith('image/')) {
+              <button type="button" class="btn btn-sm btn-outline-primary flex-grow-1"
+                (click)="openCarousel(attachment)">View</button>
+            } @else {
+              <a [href]="attachmentService.GetFileUrl(attachment.id)" target="_blank"
+                class="btn btn-sm btn-outline-primary flex-grow-1">View</a>
+            }
             <button type="button" class="btn btn-sm btn-outline-danger"
               (click)="deleteAttachment(attachment.id)">&times;</button>
           </div>
@@ -660,6 +666,42 @@
   </div>
 
 </form>
+
+<!-- Attachment carousel modal -->
+@if (carouselOpen && imageAttachments.length > 0) {
+  <div class="modal-backdrop show" style="opacity: 0.85;"></div>
+  <div class="modal d-block" tabindex="-1" role="dialog" style="z-index: 1060;" (click)="closeCarousel()">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document" (click)="$event.stopPropagation()">
+      <div class="modal-content bg-dark text-white">
+        <div class="modal-header border-secondary py-2">
+          <span class="small text-truncate me-2" style="max-width: 80%;">
+            {{ imageAttachments[carouselIndex].fileName }}
+          </span>
+          @if (imageAttachments.length > 1) {
+            <span class="small text-secondary me-auto">{{ carouselIndex + 1 }} / {{ imageAttachments.length }}</span>
+          }
+          <button type="button" class="btn-close btn-close-white" (click)="closeCarousel()"></button>
+        </div>
+        <div class="modal-body p-0 text-center position-relative" style="min-height: 300px;">
+          <img [src]="attachmentService.GetFileUrl(imageAttachments[carouselIndex].id)"
+            [alt]="imageAttachments[carouselIndex].fileName"
+            style="max-width: 100%; max-height: 70vh; object-fit: contain;" />
+          @if (imageAttachments.length > 1) {
+            <button type="button" class="btn btn-dark position-absolute top-50 start-0 translate-middle-y ms-2"
+              style="opacity: 0.8;" (click)="carouselPrev()">&#8249;</button>
+            <button type="button" class="btn btn-dark position-absolute top-50 end-0 translate-middle-y me-2"
+              style="opacity: 0.8;" (click)="carouselNext()">&#8250;</button>
+          }
+        </div>
+        <div class="modal-footer border-secondary py-2 justify-content-center">
+          <a [href]="attachmentService.GetFileUrl(imageAttachments[carouselIndex].id)"
+            [download]="imageAttachments[carouselIndex].fileName"
+            class="btn btn-sm btn-outline-light">Download</a>
+        </div>
+      </div>
+    </div>
+  </div>
+}
 
 <!-- Incomplete order warning modal -->
 @if (showIncompleteWarning) {
