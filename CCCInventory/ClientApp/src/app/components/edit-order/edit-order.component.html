@@ -57,11 +57,27 @@
 
     <!-- Column 2 -->
     <div class="col-md-3">
-      <div class="mb-2 form-floating">
-        <input formControlName="custName" type="text" id="custName" class="form-control"
-          [ngClass]="{'is-invalid': isInvalid('custName') || isFieldIncomplete('custName')}" />
-        <label for="custName">Customer Name *</label>
-        <div class="invalid-feedback">Customer name is required.</div>
+      <div class="mb-2 position-relative">
+        <div class="form-floating">
+          <input formControlName="custName" type="text" id="custName" class="form-control"
+            [ngClass]="{'is-invalid': isInvalid('custName') || isFieldIncomplete('custName')}"
+            autocomplete="off"
+            (blur)="closeCustomerDropdown()" />
+          <label for="custName">Customer Name *</label>
+          <div class="invalid-feedback">Customer name is required.</div>
+        </div>
+        @if (showCustomerDropdown && customerSuggestions.length > 0) {
+          <ul class="list-group position-absolute w-100 shadow-sm" style="z-index:1050; top:100%; left:0;">
+            @for (c of customerSuggestions; track c.customerId) {
+              <li class="list-group-item list-group-item-action py-2" style="cursor:pointer;"
+                (mousedown)="selectCustomer(c)">
+                <strong>{{ c.firstName }} {{ c.lastName }}</strong>
+                @if (c.phone) { <span class="text-muted ms-2 small">{{ c.phone }}</span> }
+                @if (c.email) { <div class="text-muted small">{{ c.email }}</div> }
+              </li>
+            }
+          </ul>
+        }
       </div>
       <div class="mb-2 form-floating">
         <input formControlName="custPhone" type="tel" maxlength="12" (input)="onTelInput($event, 'custPhone')"

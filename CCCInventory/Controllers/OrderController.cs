@@ -110,11 +110,42 @@ namespace CCCInventory.Controllers
             return Ok((max ?? 0) + 1);
         }
 
+        private async Task LinkOrCreateCustomerAsync(Order order)
+        {
+            if (string.IsNullOrWhiteSpace(order.CustEmail)) return;
+
+            var existing = await _context.Customers
+                .FirstOrDefaultAsync(c => c.Email == order.CustEmail);
+
+            if (existing != null)
+            {
+                order.CustomerId = existing.CustomerId;
+                if (!string.IsNullOrWhiteSpace(order.CustPhone) && existing.Phone != order.CustPhone)
+                    existing.Phone = order.CustPhone;
+            }
+            else
+            {
+                var parts = (order.CustName ?? "").Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+                var customer = new Customer
+                {
+                    FirstName = parts.Length > 0 ? parts[0] : "Unknown",
+                    LastName  = parts.Length > 1 ? parts[1] : "",
+                    Email     = order.CustEmail,
+                    Phone     = order.CustPhone
+                };
+                _context.Customers.Add(customer);
+                await _context.SaveChangesAsync();
+                order.CustomerId = customer.CustomerId;
+            }
+        }
+
         [HttpPost]
         public async Task<ActionResult<int>> CreateOrder(Order order)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
+
+            await LinkOrCreateCustomerAsync(order);
 
             _context.Orders.Add(order);
             await _context.SaveChangesAsync(); // EF assigns OrderNumber here
@@ -130,6 +161,8 @@ namespace CCCInventory.Controllers
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
+
+            await LinkOrCreateCustomerAsync(order);
 
             var dbOrder = await _context.Orders
                 .FirstOrDefaultAsync(o => o.OrderNumber == order.OrderNumber);

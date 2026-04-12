@@ -5,6 +5,8 @@ import { EditOrderComponent } from './components/edit-order/edit-order.component
 import { CalendarComponent } from './components/calendar/calendar.component';
 import { BakeSheetComponent } from './components/bake-sheet/bake-sheet.component';
 import { ManagementComponent } from './components/management/management.component';
+import { CustomersComponent } from './components/customers/customers.component';
+import { CustomerDetailComponent } from './components/customer-detail/customer-detail.component';
 import { LoginComponent } from './components/login/login.component';
 import { PinComponent } from './components/pin/pin.component';
 import { authGuard } from './guards/auth.guard';
@@ -22,7 +24,9 @@ export const routes: Routes = [
       { path: 'all-orders', component: AllOrdersComponent },
       { path: 'calendar', component: CalendarComponent },
       { path: 'bake-sheet', component: BakeSheetComponent },
-      { path: 'management', component: ManagementComponent }
+      { path: 'management', component: ManagementComponent },
+      { path: 'customers', component: CustomersComponent },
+      { path: 'customers/:id', component: CustomerDetailComponent }
     ]
   }
 ];

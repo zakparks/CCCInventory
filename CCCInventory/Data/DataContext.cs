@@ -23,6 +23,9 @@ namespace CCCInventory.Data
         public DbSet<StaffMember> StaffMembers => Set<StaffMember>();
         public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
+        // Customers
+        public DbSet<Customer> Customers => Set<Customer>();
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -39,6 +42,12 @@ namespace CCCInventory.Data
 
             modelBuilder.Entity<AuditLog>()
                 .HasIndex(a => new { a.EntityType, a.EntityId });
+
+            modelBuilder.Entity<Customer>()
+                .HasMany(c => c.Orders)
+                .WithOne()
+                .HasForeignKey(o => o.CustomerId)
+                .OnDelete(DeleteBehavior.SetNull);
         }
     }
 }

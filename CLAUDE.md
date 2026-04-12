@@ -26,7 +26,7 @@
 
 ---
 
-## Current State (as of 2026-04-09)
+## Current State (as of 2026-04-11)
 
 ### Completed Phases
 
@@ -43,6 +43,7 @@
 | 7 | Bake sheet redesign — per-layer rows, cakes+cupcakes combined, Thu–Wed bake week, day-of-week color highlights (Mon=red…Sat=purple), order # pastel color coding, Micro/Quarter Sheet special display rules, Other items at bottom, print layout with gridlines |
 | 8 | Authentication — ASP.NET Core Identity + JWT HttpOnly cookie; 4-digit PIN per staff member; inactivity timeout → PIN screen; staff management in Management page; AuditLog table |
 | pre-9 | Pre-phase fixes — attachment carousel modal (click image thumbnail → full-size modal w/ prev/next); CookieSize already present in management categories |
+| 14 | Customer Profiles — `Customer` entity (FirstName, LastName, Email, Phone); `CustomerId` FK on Order (nullable, SetNull on delete); `CustomerController` (list, detail, search, CRUD, merge); customer link/create logic on order save (email as unique key); autocomplete dropdown on `custName` field in order form; `/customers` list page; `/customers/:id` detail/edit page with order history; "New Order" from customer pre-fills contact fields; seed customers linked to seed orders; customer merge (re-points all orders to kept record, deletes duplicate) |
 
 ### Known Gaps in Completed Phases
 
@@ -60,14 +61,7 @@ Phases are numbered in execution order.
 
 ---
 
-### Phase 8 — Authentication *(go-live blocker)*
-
-- **Primary:** ASP.NET Core Identity + JWT in `HttpOnly` cookie with long expiry (stays logged in at shop like YouTube/Facebook)
-- **Secondary PIN:** 4-digit PIN per named staff member record; inactivity timeout (configurable, default ~minutes) soft-logs out to PIN screen without clearing primary JWT; any staff member can enter their PIN to resume
-- **Staff management:** "Manage Users" section on Management page — list of staff names with editable PIN (explicitly non-secure, plain text is appropriate)
-- **Audit trail:** `AuditLog` table — staff member (from active PIN session), entity type + ID, field changed (from→to), timestamp; enables detecting malicious changes and rolling back data entry errors
-
-### Phase 9 — Deployment & Hosting *(go-live blocker)*
+### Phase 9 — Deployment & Hosting *(go-live blocker)* ← NEXT
 
 **Architecture:**
 ```

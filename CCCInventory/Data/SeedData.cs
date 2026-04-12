@@ -6,7 +6,9 @@ namespace CCCInventory.Data
         {
             SeedOptions(context);
             SeedSignatureCupcakes(context);
+            SeedCustomers(context);
             SeedOrders(context);
+            LinkOrdersToCustomers(context);
         }
 
         private static void SeedOptions(DataContext context)
@@ -104,6 +106,60 @@ namespace CCCInventory.Data
             context.SaveChanges();
         }
 
+        private static void SeedCustomers(DataContext context)
+        {
+            if (context.Customers.Any()) return;
+
+            // All customers whose emails appear in seed orders — linked automatically by LinkOrdersToCustomers
+            context.Customers.AddRange(
+                new Customer { FirstName = "Amy",       LastName = "Chang",      Email = "amy.c@email.com",           Phone = "555-501-6007" },
+                new Customer { FirstName = "Emily",     LastName = "Johnson",    Email = "emily.j@email.com",         Phone = "555-234-5678" },
+                new Customer { FirstName = "Priya",     LastName = "Patel",      Email = "priya.p@email.com",         Phone = "555-567-8901" },
+                new Customer { FirstName = "Rachel",    LastName = "Thompson",   Email = "rachel.t@email.com",        Phone = "555-678-9012" },
+                new Customer { FirstName = "Brittany",  LastName = "Evans",      Email = "bev@email.com",             Phone = "555-345-6780" },
+                new Customer { FirstName = "Michael",   LastName = "Scott",      Email = "mscott@dundermifflin.com",  Phone = "555-867-5309" },
+                new Customer { FirstName = "Megan",     LastName = "Wilson",     Email = "megan.w@email.com",         Phone = "555-888-9900" },
+                new Customer { FirstName = "Sophia",    LastName = "Martinez",   Email = "sophia.m@email.com",        Phone = "555-345-6789" },
+                new Customer { FirstName = "Hannah",    LastName = "Lee",        Email = "hannah.l@email.com",        Phone = "555-890-1234" },
+                new Customer { FirstName = "Nicole",    LastName = "Foster",     Email = "nicole.f@email.com",        Phone = "555-012-3456" },
+                new Customer { FirstName = "Jessica",   LastName = "Brown",      Email = "jess.b@email.com",          Phone = "555-666-7788" },
+                new Customer { FirstName = "Jessica",   LastName = "Brown",      Email = "j.brown2@email.com",        Phone = "555-222-9988" },  // same name, different person
+                new Customer { FirstName = "Sarah",     LastName = "Brooks",     Email = "sarah.b@email.com",         Phone = "555-234-5679" },
+                new Customer { FirstName = "Sarah",     LastName = "Johnson",    Email = "sarah.j@email.com",         Phone = "555-222-3344" },
+                new Customer { FirstName = "Amanda",    LastName = "White",      Email = "amanda.w@email.com",        Phone = "555-444-5566" },
+                new Customer { FirstName = "Ashley",    LastName = "Anderson",   Email = "ashley.a@email.com",        Phone = "555-110-2233" },  // no orders — demonstrates 0-order customer
+                new Customer { FirstName = "Stephanie", LastName = "Jackson",    Email = "steph.j@email.com",         Phone = "555-332-4455" },
+                new Customer { FirstName = "Heather",   LastName = "Thompson",   Email = "heather.t@email.com",       Phone = "555-776-8899" },
+                new Customer { FirstName = "Lisa",      LastName = "Rodriguez",  Email = "lisa.r@email.com",          Phone = "555-201-3004" },
+                new Customer { FirstName = "Pat",       LastName = "Wilson",     Email = "pat.w@email.com",           Phone = "555-100-2003" },
+                new Customer { FirstName = "Tom",       LastName = "Bradley",    Email = "tom.b@email.com",           Phone = "555-301-4005" }
+            );
+            context.SaveChanges();
+        }
+
+        private static void LinkOrdersToCustomers(DataContext context)
+        {
+            var customers = context.Customers
+                .Where(c => c.Email != null)
+                .ToDictionary(c => c.Email!, c => c.CustomerId);
+
+            var ordersToLink = context.Orders
+                .Where(o => o.CustomerId == null && o.CustEmail != null)
+                .ToList();
+
+            bool anyLinked = false;
+            foreach (var order in ordersToLink)
+            {
+                if (order.CustEmail != null && customers.TryGetValue(order.CustEmail, out var customerId))
+                {
+                    order.CustomerId = customerId;
+                    anyLinked = true;
+                }
+            }
+
+            if (anyLinked) context.SaveChanges();
+        }
+
         private static void SeedOrders(DataContext context)
         {
             if (context.Orders.Any()) return;
@@ -155,10 +211,10 @@ namespace CCCInventory.Data
                 },
                 new Order
                 {
-                    Title = "Marcus - Choc Chip Cookies",
+                    Title = "Rachel - Cookie Order",
                     OrderDateTime = w1Tue.AddHours(12),
-                    CustName = "Marcus Williams", CustPhone = "555-876-5432",
-                    Details = "3 dozen chocolate chip cookies",
+                    CustName = "Rachel Thompson", CustPhone = "555-678-9012", CustEmail = "rachel.t@email.com",
+                    Details = "3 dozen chocolate chip cookies for the office",
                     OrderType = "Pickup",
                     TotalCost = 42.00, DepositAmount = 42.00, DepositPaymentMethod = "Cash",
                     DateOrderPlaced = today.AddDays(-19), PaidInFull = true,
@@ -194,9 +250,9 @@ namespace CCCInventory.Data
                 },
                 new Order
                 {
-                    Title = "Tiffany - Sugar Cookies",
+                    Title = "Sarah B - Sugar Cookies",
                     OrderDateTime = w1Thu.AddHours(11),
-                    CustName = "Tiffany Brooks", CustPhone = "555-234-5679",
+                    CustName = "Sarah Brooks", CustPhone = "555-234-5679", CustEmail = "sarah.b@email.com",
                     Details = "4 dozen sugar cookies, fall theme",
                     OrderType = "Pickup",
                     TotalCost = 64.00, DepositAmount = 32.00, DepositPaymentMethod = "Cash",
@@ -315,9 +371,9 @@ namespace CCCInventory.Data
                 },
                 new Order
                 {
-                    Title = "Carlos - Office Birthday",
+                    Title = "Amy - Office Birthday",
                     OrderDateTime = w2Wed.AddHours(17),
-                    CustName = "Carlos Reyes", CustPhone = "555-901-2345",
+                    CustName = "Amy Chang", CustPhone = "555-501-6007", CustEmail = "amy.c@email.com",
                     Details = "Office birthday, chocolate sheet cake",
                     OrderType = "Pickup",
                     TotalCost = 55.00, DepositAmount = 55.00, DepositPaymentMethod = "Venmo",
@@ -458,10 +514,10 @@ namespace CCCInventory.Data
                 },
                 new Order
                 {
-                    Title = "Tyler - Graduation Cake",
+                    Title = "Emily - Graduation Cake",
                     OrderDateTime = w3Thu.AddHours(17),
-                    CustName = "Tyler Davis", CustPhone = "555-555-6677",
-                    Details = "Graduation cake, navy blue and white",
+                    CustName = "Emily Johnson", CustPhone = "555-234-5678", CustEmail = "emily.j@email.com",
+                    Details = "Graduation cake for her son — navy blue and white",
                     OrderType = "Delivery", DeliveryLocation = "900 Campus Blvd",
                     TotalCost = 88.00, DepositAmount = 44.00, DepositPaymentMethod = "Venmo",
                     DateOrderPlaced = today.AddDays(-19), ContractSent = true,
@@ -487,7 +543,7 @@ namespace CCCInventory.Data
                 {
                     Title = "Sarah - Sweet 16",
                     OrderDateTime = w3Fri.AddHours(14),
-                    CustName = "Sarah Johnson", CustPhone = "555-222-3344",
+                    CustName = "Sarah Johnson", CustPhone = "555-222-3344", CustEmail = "sarah.j@email.com",
                     Details = "Sweet 16 cake, 2 tier, purple and silver",
                     OrderType = "Pickup",
                     TotalCost = 130.00, DepositAmount = 65.00, DepositPaymentMethod = "Venmo",
@@ -510,9 +566,9 @@ namespace CCCInventory.Data
                 },
                 new Order
                 {
-                    Title = "Ashley - Dog Birthday",
+                    Title = "Jessica - Dog Birthday",
                     OrderDateTime = w3Fri.AddHours(13),
-                    CustName = "Ashley Anderson", CustPhone = "555-110-2233", CustEmail = "ashley.a@email.com",
+                    CustName = "Jessica Brown", CustPhone = "555-222-9988", CustEmail = "j.brown2@email.com",
                     Details = "Dog birthday — pupcake dozen",
                     OrderType = "Delivery", DeliveryLocation = "17 Bark Ave",
                     TotalCost = 36.00, DepositAmount = 36.00, DepositPaymentMethod = "Venmo",

@@ -4,14 +4,16 @@ import { ReactiveFormsModule, FormsModule, FormGroup, FormBuilder, Validators, A
 import { RouterModule, ActivatedRoute, NavigationExtras, Router } from '@angular/router';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { Subject } from 'rxjs';
-import { debounceTime, filter, takeUntil, switchMap } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, filter, takeUntil, switchMap } from 'rxjs/operators';
 import { Order } from '../../models/order';
 import { OrderAttachment } from '../../models/order-attachment';
 import { SignatureCupcake } from '../../models/signature-cupcake';
+import { CustomerSearchResult } from '../../models/customer';
 import { OrderService } from '../../services/order.service';
 import { AttachmentService } from '../../services/attachment.service';
 import { OptionService } from '../../services/option.service';
 import { SignatureCupcakeService } from '../../services/signature-cupcake.service';
+import { CustomerService } from '../../services/customer.service';
 
 @Component({
   selector: 'app-edit-order-component',
@@ -86,6 +88,11 @@ export class EditOrderComponent implements OnInit, OnDestroy {
   isOtherDetailsHeaderShown: boolean = false;
 
   private destroy$ = new Subject<void>();
+  private _prefillParams: any = {};
+
+  // Customer autocomplete
+  customerSuggestions: CustomerSearchResult[] = [];
+  showCustomerDropdown = false;
 
   // main form group
   editOrderFormGroup: FormGroup = this._formBuilder.group({
@@ -117,6 +124,7 @@ export class EditOrderComponent implements OnInit, OnDestroy {
     labor: [''],
     flavorUpgrade: [''],
     lookbookPrice: [''],
+    customerId: [null as number | null],
     cakeTierInfo: this._formBuilder.array([]),
     cupcakeInfo: this._formBuilder.array([]),
     pupcakeInfo: this._formBuilder.array([]),
@@ -133,7 +141,8 @@ export class EditOrderComponent implements OnInit, OnDestroy {
     private renderer: Renderer2,
     private el: ElementRef,
     private optionService: OptionService,
-    private sigService: SignatureCupcakeService
+    private sigService: SignatureCupcakeService,
+    private customerService: CustomerService
   ) { }
 
   // Active-only signatures for new orders; all for existing orders
@@ -211,6 +220,7 @@ export class EditOrderComponent implements OnInit, OnDestroy {
 
     this.route.queryParams.pipe(
       switchMap(params => {
+        this._prefillParams = params;
         if (params["orderNumber"]) {
           this.createOrUpdate = "Update";
           return this.orderService.GetOrder(params["orderNumber"]);
@@ -236,6 +246,30 @@ export class EditOrderComponent implements OnInit, OnDestroy {
         });
       }
       this.initOrderFormGroup();
+      // Pre-fill contact fields when navigating from Customer detail
+      if (this.createOrUpdate === 'Create') {
+        const p = this._prefillParams;
+        if (p['custName'] || p['customerId']) {
+          this.editOrderFormGroup.patchValue({
+            custName:   p['custName']   ?? '',
+            custEmail:  p['custEmail']  ?? '',
+            custPhone:  p['custPhone']  ?? '',
+            customerId: p['customerId'] ? Number(p['customerId']) : null
+          }, { emitEvent: false });
+        }
+      }
+    });
+
+    // Customer autocomplete on custName field
+    this.editOrderFormGroup.get('custName')!.valueChanges.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      filter(val => val && val.length >= 2),
+      switchMap(val => this.customerService.Search(val)),
+      takeUntil(this.destroy$)
+    ).subscribe(results => {
+      this.customerSuggestions = results;
+      this.showCustomerDropdown = results.length > 0;
     });
 
     // Autosave: save after 4 seconds of inactivity when any meaningful field has data
@@ -250,6 +284,24 @@ export class EditOrderComponent implements OnInit, OnDestroy {
       }),
       takeUntil(this.destroy$)
     ).subscribe(() => this.autoSave());
+  }
+
+  selectCustomer(c: CustomerSearchResult) {
+    this.editOrderFormGroup.patchValue({
+      custName:  `${c.firstName} ${c.lastName}`.trim(),
+      custEmail: c.email  ?? '',
+      custPhone: c.phone  ?? '',
+      customerId: c.customerId ?? null
+    }, { emitEvent: false });
+    this.showCustomerDropdown = false;
+    this.customerSuggestions = [];
+  }
+
+  closeCustomerDropdown() {
+    // Small delay so a click on a suggestion fires before the dropdown closes
+    setTimeout(() => {
+      this.showCustomerDropdown = false;
+    }, 150);
   }
 
   ngOnDestroy() {
@@ -303,7 +355,8 @@ export class EditOrderComponent implements OnInit, OnDestroy {
       paidInFull: this.orderToEdit.paidInFull,
       labor: this.orderToEdit.labor,
       flavorUpgrade: this.orderToEdit.flavorUpgrade,
-      lookbookPrice: this.orderToEdit.lookbookPrice
+      lookbookPrice: this.orderToEdit.lookbookPrice,
+      customerId: this.orderToEdit.customerId ?? null
     });
 
     const cakeTierInfo = this.editOrderFormGroup.get('cakeTierInfo') as FormArray;

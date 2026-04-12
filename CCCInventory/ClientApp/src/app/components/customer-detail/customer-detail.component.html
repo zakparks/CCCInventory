@@ -1,0 +1,149 @@
+<div class="d-flex align-items-center gap-2 mb-3">
+  <button class="btn btn-outline-secondary btn-sm" (click)="goBack()">← Customers</button>
+  <h1 class="mb-0">{{ isNew ? 'New Customer' : (customer?.firstName ?? '') + ' ' + (customer?.lastName ?? '') }}</h1>
+</div>
+<hr />
+
+@if (saveSuccess) {
+  <div class="alert alert-success alert-dismissible">Changes saved.</div>
+}
+@if (saveError) {
+  <div class="alert alert-danger alert-dismissible">{{ saveError }}</div>
+}
+
+<!-- Contact Info Form -->
+<h5>Contact Info</h5>
+<form [formGroup]="form" (ngSubmit)="save()" class="row g-2 mb-4" style="max-width: 600px;">
+  <div class="col-md-6 form-floating">
+    <input formControlName="firstName" type="text" id="firstName" class="form-control"
+      [ngClass]="{'is-invalid': form.get('firstName')?.invalid && form.get('firstName')?.touched}" />
+    <label for="firstName">First Name *</label>
+  </div>
+  <div class="col-md-6 form-floating">
+    <input formControlName="lastName" type="text" id="lastName" class="form-control"
+      [ngClass]="{'is-invalid': form.get('lastName')?.invalid && form.get('lastName')?.touched}" />
+    <label for="lastName">Last Name *</label>
+  </div>
+  <div class="col-md-6 form-floating">
+    <input formControlName="email" type="email" id="email" class="form-control" />
+    <label for="email">Email</label>
+  </div>
+  <div class="col-md-6 form-floating">
+    <input formControlName="phone" type="tel" id="phone" class="form-control" />
+    <label for="phone">Phone</label>
+  </div>
+  <div class="col-12 d-flex gap-2">
+    <button type="submit" class="btn btn-primary" [disabled]="form.invalid">
+      {{ isNew ? 'Create Customer' : 'Save Changes' }}
+    </button>
+    @if (!isNew) {
+      <button type="button" class="btn btn-outline-primary" (click)="newOrder()">+ New Order</button>
+      <button type="button" class="btn btn-outline-secondary ms-auto" (click)="openMergePanel()">Merge...</button>
+    }
+  </div>
+</form>
+
+<!-- Merge Panel -->
+@if (showMergePanel) {
+  <div class="card border-warning mb-4" style="max-width: 700px;">
+    <div class="card-header bg-warning-subtle d-flex justify-content-between align-items-center">
+      <strong>Merge Customer</strong>
+      <button type="button" class="btn-close" (click)="cancelMerge()"></button>
+    </div>
+    <div class="card-body">
+      <p class="text-muted mb-3">
+        Find a duplicate customer to merge into <strong>{{ form.value.firstName }} {{ form.value.lastName }}</strong>.
+        Their orders will be re-linked to this customer and the duplicate will be deleted.
+      </p>
+      <div class="form-floating mb-3">
+        <input [formControl]="mergeSearch" type="text" id="mergeSearch" class="form-control"
+               placeholder="Search by name or email" />
+        <label for="mergeSearch">Search by name or email</label>
+      </div>
+
+      @if (mergeResults.length > 0) {
+        <div class="list-group mb-3">
+          @for (c of mergeResults; track c.customerId) {
+            <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                    [class.active]="mergeTarget?.customerId === c.customerId"
+                    (click)="selectMergeTarget(c)">
+              <span>
+                <strong>{{ c.firstName }} {{ c.lastName }}</strong>
+                @if (c.email) { <span class="ms-2 text-muted">{{ c.email }}</span> }
+                @if (c.phone) { <span class="ms-2 text-muted">{{ c.phone }}</span> }
+              </span>
+              @if (mergeTarget?.customerId === c.customerId) {
+                <span class="badge bg-primary">Selected</span>
+              }
+            </button>
+          }
+        </div>
+      }
+
+      @if (mergeTarget) {
+        <div class="row g-3 mb-3">
+          <div class="col-6">
+            <div class="card border-success">
+              <div class="card-header bg-success-subtle text-success fw-semibold">Keep (this customer)</div>
+              <div class="card-body small">
+                <div><strong>{{ form.value.firstName }} {{ form.value.lastName }}</strong></div>
+                @if (form.value.email) { <div>{{ form.value.email }}</div> }
+                @if (form.value.phone) { <div>{{ form.value.phone }}</div> }
+                <div class="text-muted mt-1">{{ (customer?.orders?.length ?? 0) }} order(s)</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="card border-danger">
+              <div class="card-header bg-danger-subtle text-danger fw-semibold">Delete (duplicate)</div>
+              <div class="card-body small">
+                <div><strong>{{ mergeTarget.firstName }} {{ mergeTarget.lastName }}</strong></div>
+                @if (mergeTarget.email) { <div>{{ mergeTarget.email }}</div> }
+                @if (mergeTarget.phone) { <div>{{ mergeTarget.phone }}</div> }
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-danger" (click)="confirmMerge()">
+            Confirm Merge — Delete {{ mergeTarget.firstName }} {{ mergeTarget.lastName }}
+          </button>
+          <button type="button" class="btn btn-outline-secondary" (click)="cancelMerge()">Cancel</button>
+        </div>
+      }
+    </div>
+  </div>
+}
+
+<!-- Order History -->
+@if (!isNew && customer) {
+  <h5>Order History</h5>
+  @if ((customer.orders?.length ?? 0) === 0) {
+    <p class="text-muted">No orders linked to this customer.</p>
+  } @else {
+    <table class="table table-striped table-hover" aria-label="Customer order history">
+      <thead>
+        <tr>
+          <th>Order #</th>
+          <th>Date</th>
+          <th>Title</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (order of customer.orders ?? []; track order.orderNumber) {
+          <tr style="cursor:pointer;" (click)="editOrder(order.orderNumber)">
+            <td>{{ order.orderNumber }}</td>
+            <td style="white-space:nowrap;">{{ order.orderDateTime | date:'M/d/yy' }}</td>
+            <td>{{ order.title ?? order.details ?? '' }}</td>
+            <td><span [class]="getStatusClass(order)">{{ getOrderStatus(order) }}</span></td>
+            <td>
+              <button class="btn btn-sm btn-outline-primary" (click)="$event.stopPropagation(); editOrder(order.orderNumber)">Edit</button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+}

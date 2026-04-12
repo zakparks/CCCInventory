@@ -40,5 +40,6 @@ namespace CCCInventory
         public DateTime? FinalPaymentDateTime { get; set; }
         public DateTime DateOrderPlaced { get; set; }
         public bool? PaidInFull { get; set; }
+        public int? CustomerId { get; set; }
     }
 }

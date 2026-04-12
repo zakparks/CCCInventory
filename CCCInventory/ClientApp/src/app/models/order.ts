@@ -40,4 +40,5 @@ export class Order {
   labor?: number;
   flavorUpgrade?: number;
   lookbookPrice?: number;
+  customerId?: number;
 }
