@@ -2,13 +2,62 @@ namespace CCCInventory.Data
 {
     public static class SeedData
     {
-        public static void Initialize(DataContext context)
+        public static void Initialize(DataContext context, string? attachmentsRoot = null)
         {
             SeedOptions(context);
             SeedSignatureCupcakes(context);
             SeedCustomers(context);
+            bool freshOrders = !context.Orders.Any();
             SeedOrders(context);
             LinkOrdersToCustomers(context);
+            if (freshOrders && attachmentsRoot != null) SeedWeddingPhotos(context, attachmentsRoot);
+        }
+
+        // Placeholder inspiration photos (Data/SeedImages) attached to the seed wedding orders and chosen for
+        // the contract: Lauren has both, Grace and Chloe the cake photo only (Chloe's cupcakes have none),
+        // Ava (incomplete) none. Runs only right after the seed orders are created.
+        private static void SeedWeddingPhotos(DataContext context, string attachmentsRoot)
+        {
+            var imageDir = Path.Combine(AppContext.BaseDirectory, "Data", "SeedImages");
+            if (!Directory.Exists(imageDir)) return;
+
+            var plan = new (string Customer, bool Cake, bool Cupcake)[]
+            {
+                ("Grace Miller", true, false),
+                ("Chloe Bennett", true, false),
+                ("Lauren Hayes", true, true),
+            };
+            bool changed = false;
+            foreach (var (customer, cake, cupcake) in plan)
+            {
+                var order = context.Orders
+                    .Where(o => o.IsWedding && o.CustName == customer)
+                    .Select(o => new { o.OrderNumber, o.WeddingDetails })
+                    .FirstOrDefault();
+                if (order?.WeddingDetails == null || context.OrderAttachments.Any(a => a.OrderNumber == order.OrderNumber))
+                    continue;
+
+                OrderAttachment Attach(string file)
+                {
+                    var stored = $"{Guid.NewGuid()}.jpg";
+                    var dir = Path.Combine(attachmentsRoot, order.OrderNumber.ToString());
+                    Directory.CreateDirectory(dir);
+                    File.Copy(Path.Combine(imageDir, file), Path.Combine(dir, stored));
+                    var attachment = new OrderAttachment
+                    {
+                        OrderNumber = order.OrderNumber, FileName = file, StoredFileName = stored,
+                        ContentType = "image/jpeg", UploadedAt = DateTime.Now
+                    };
+                    context.OrderAttachments.Add(attachment);
+                    context.SaveChanges();
+                    return attachment;
+                }
+
+                if (cake) order.WeddingDetails.CakePhotoAttachmentId = Attach("cake-inspiration.jpg").Id;
+                if (cupcake) order.WeddingDetails.CupcakePhotoAttachmentId = Attach("cupcake-inspiration.jpg").Id;
+                changed = true;
+            }
+            if (changed) context.SaveChanges();
         }
 
         private static void SeedOptions(DataContext context)

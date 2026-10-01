@@ -34,6 +34,10 @@ export interface WeddingDetails {
   cupcakeDesignDescription?: string | null;
   totalServings?: number | null;
 
+  // Contract inspiration photos: ids of this order's image attachments
+  cakePhotoAttachmentId?: number | null;
+  cupcakePhotoAttachmentId?: number | null;
+
   // Generated contract (server-managed)
   contractDocId?: string | null;
   contractDocUrl?: string | null;

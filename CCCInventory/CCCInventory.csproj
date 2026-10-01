@@ -57,6 +57,11 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<!-- Placeholder inspiration photos attached to the seed wedding orders -->
+		<None Update="Data\SeedImages\*.jpg" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<None Remove="ClientApp\src\app\models\cake.ts" />
 		<None Remove="ClientApp\src\app\models\cookie.ts" />
 		<None Remove="ClientApp\src\app\models\cupcake.ts" />

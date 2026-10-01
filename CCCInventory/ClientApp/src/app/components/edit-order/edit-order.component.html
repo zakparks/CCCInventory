@@ -554,6 +554,7 @@
         style="height: 70px" placeholder="Cake design"></textarea>
       <label for="w_mainDesign">Cake Design (printed on the contract)</label>
     </div>
+    <ng-container [ngTemplateOutlet]="photoPicker" [ngTemplateOutletContext]="{ field: 'cakePhotoAttachmentId', label: 'Cake' }"></ng-container>
   }
 
   <!-- ── Cupcake Details ──────────────────────────────────────── -->
@@ -645,7 +646,40 @@
         style="height: 70px" placeholder="Cupcake design"></textarea>
       <label for="w_cupcakeDesign">Cupcake Design (printed on the contract)</label>
     </div>
+    <ng-container [ngTemplateOutlet]="photoPicker" [ngTemplateOutletContext]="{ field: 'cupcakePhotoAttachmentId', label: 'Cupcake' }"></ng-container>
   }
+
+  <!-- Contract inspiration photo: one of the order's image attachments -->
+  <ng-template #photoPicker let-field="field" let-label="label">
+    <div class="mt-2 mb-3">
+      <div class="small text-muted mb-1">{{ label }} inspiration photo (printed on the contract)</div>
+      @if (contractPhotoChoices.length === 0) {
+        <div class="small text-muted fst-italic">Add a photo under Attachments below to choose one.</div>
+      } @else {
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          @for (a of contractPhotoChoices; track a.id) {
+            <button type="button" tabindex="-1" class="p-0 bg-white rounded position-relative"
+              [style.border]="photoId(field) === a.id ? '3px solid var(--bs-primary)' : '3px solid var(--bs-gray-300)'"
+              [title]="(photoId(field) === a.id ? 'Chosen — click to clear: ' : 'Use on the contract: ') + a.fileName"
+              [attr.aria-pressed]="photoId(field) === a.id"
+              (click)="togglePhoto(field, a.id)">
+              <img [src]="attachmentService.GetFileUrl(a.id)" [alt]="a.fileName"
+                style="width: 64px; height: 64px; object-fit: cover; display: block;" class="rounded-1" />
+              @if (photoId(field) === a.id) {
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary">&#10003;</span>
+              }
+            </button>
+          }
+          @if (photoId(field) === null) {
+            <span class="small text-muted">None chosen</span>
+          }
+        </div>
+      }
+      @if (hasUnusableImages) {
+        <div class="small text-muted mt-1">HEIC and WebP photos can't go in the contract; save them as JPEG to choose them.</div>
+      }
+    </div>
+  </ng-template>
 
   <!-- ── Pupcake Details ──────────────────────────────────────── -->
   @if (isPupcakeDetailsHeaderShown) {
@@ -860,6 +894,9 @@
           <p class="card-text small text-truncate mb-1" [title]="attachment.fileName">
             {{ attachment.fileName }}
           </p>
+          @for (use of photoUse(attachment.id); track use) {
+            <span class="badge text-bg-primary me-1 mb-1">{{ use }}</span>
+          }
           <div class="d-flex gap-1">
             @if (attachment.contentType.startsWith('image/')) {
               <button type="button" class="btn btn-sm btn-outline-primary flex-grow-1"

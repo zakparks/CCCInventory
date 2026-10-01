@@ -15,14 +15,16 @@ namespace CCCInventory.Controllers
         private readonly WeddingContractService _contracts;
         private readonly AuditService _audit;
         private readonly ILogger<WeddingContractController> _logger;
+        private readonly string _attachmentsRoot;
 
         public WeddingContractController(DataContext context, WeddingContractService contracts,
-            AuditService audit, ILogger<WeddingContractController> logger)
+            AuditService audit, ILogger<WeddingContractController> logger, IWebHostEnvironment env)
         {
             _context = context;
             _contracts = contracts;
             _audit = audit;
             _logger = logger;
+            _attachmentsRoot = AttachmentController.AttachmentsRoot(env);
         }
 
         public class GenerateRequest
@@ -54,7 +56,7 @@ namespace CCCInventory.Controllers
             ContractResult result;
             try
             {
-                result = await _contracts.GenerateAsync(order, mode, ct);
+                result = await _contracts.GenerateAsync(order, mode, await LoadPhotosAsync(order, ct), ct);
             }
             catch (ContractException ex)
             {
@@ -105,8 +107,33 @@ namespace CCCInventory.Controllers
             {
                 fileName = WeddingContractService.BuildFileName(order, revised: false),
                 values = WeddingContractService.BuildValues(order),
-                rows = WeddingContractService.BuildRows(order)
+                rows = WeddingContractService.BuildRows(order),
+                photos = (await LoadPhotosAsync(order, ct)).ToDictionary(p => p.Token, p => p.FileName)
             });
+        }
+
+        // The order's chosen inspiration photos (attachments of this order only)
+        private async Task<List<ContractPhoto>> LoadPhotosAsync(Order order, CancellationToken ct)
+        {
+            var w = order.WeddingDetails;
+            var chosen = new Dictionary<string, int?>
+            {
+                ["cake_photo"] = w?.CakePhotoAttachmentId,
+                ["cupcake_photo"] = w?.CupcakePhotoAttachmentId
+            };
+            var ids = chosen.Values.OfType<int>().ToList();
+            if (ids.Count == 0) return [];
+
+            var attachments = await _context.OrderAttachments
+                .Where(a => a.OrderNumber == order.OrderNumber && ids.Contains(a.Id))
+                .ToDictionaryAsync(a => a.Id, ct);
+            var photos = new List<ContractPhoto>();
+            foreach (var (token, id) in chosen)
+            {
+                if (id is int i && attachments.TryGetValue(i, out var a))
+                    photos.Add(new ContractPhoto(token, AttachmentController.FilePath(_attachmentsRoot, a), a.ContentType, a.FileName));
+            }
+            return photos;
         }
 
         private async Task<int?> GetStaffMemberIdAsync()

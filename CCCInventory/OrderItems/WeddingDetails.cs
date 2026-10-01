@@ -47,6 +47,11 @@ namespace CCCInventory
         public string? CupcakeDesignDescription { get; set; }
         public int? TotalServings { get; set; }
 
+        // Contract "Inspiration photo" images: ids of this order's image attachments (no FK; a deleted
+        // attachment clears them in AttachmentController)
+        public int? CakePhotoAttachmentId { get; set; }
+        public int? CupcakePhotoAttachmentId { get; set; }
+
         // Generated Google Doc contract (latest)
         public string? ContractDocId { get; set; }
         public string? ContractDocUrl { get; set; }

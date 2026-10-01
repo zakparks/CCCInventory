@@ -53,6 +53,34 @@ export class EditOrderComponent implements OnInit, OnDestroy {
     return this.attachments.filter(a => a.contentType.startsWith('image/'));
   }
 
+  // Images Google Docs can put in the contract (no HEIC / WebP)
+  static readonly contractImageTypes = ['image/jpeg', 'image/png', 'image/gif'];
+  get contractPhotoChoices(): OrderAttachment[] {
+    return this.attachments.filter(a => EditOrderComponent.contractImageTypes.includes(a.contentType.toLowerCase()));
+  }
+  get hasUnusableImages(): boolean {
+    return this.imageAttachments.length > this.contractPhotoChoices.length;
+  }
+
+  photoId(field: 'cakePhotoAttachmentId' | 'cupcakePhotoAttachmentId'): number | null {
+    return this.weddingGroup.get(field)?.value ?? null;
+  }
+
+  // Click a thumbnail to choose it; click the chosen one again to clear
+  togglePhoto(field: 'cakePhotoAttachmentId' | 'cupcakePhotoAttachmentId', id: number) {
+    const ctrl = this.weddingGroup.get(field)!;
+    ctrl.setValue(ctrl.value === id ? null : id);
+    ctrl.markAsDirty();
+  }
+
+  photoUse(id: number): string[] {
+    if (!this.isWedding) return [];
+    const uses: string[] = [];
+    if (this.photoId('cakePhotoAttachmentId') === id) uses.push('Cake photo');
+    if (this.photoId('cupcakePhotoAttachmentId') === id) uses.push('Cupcake photo');
+    return uses;
+  }
+
   openCarousel(attachment: OrderAttachment): void {
     const idx = this.imageAttachments.findIndex(a => a.id === attachment.id);
     this.carouselIndex = idx >= 0 ? idx : 0;
@@ -176,7 +204,9 @@ export class EditOrderComponent implements OnInit, OnDestroy {
       pickupPersonPhone: [''],
       mainCakeDesignDescription: [''],
       cupcakeDesignDescription: [''],
-      totalServings: [null as number | null]
+      totalServings: [null as number | null],
+      cakePhotoAttachmentId: [null as number | null],
+      cupcakePhotoAttachmentId: [null as number | null]
     }),
     cakeTierInfo: this._formBuilder.array([]),
     cupcakeInfo: this._formBuilder.array([]),
@@ -625,7 +655,9 @@ export class EditOrderComponent implements OnInit, OnDestroy {
       pickupPersonPhone: d.pickupPersonPhone ?? '',
       mainCakeDesignDescription: d.mainCakeDesignDescription ?? '',
       cupcakeDesignDescription: d.cupcakeDesignDescription ?? '',
-      totalServings: d.totalServings ?? null
+      totalServings: d.totalServings ?? null,
+      cakePhotoAttachmentId: d.cakePhotoAttachmentId ?? null,
+      cupcakePhotoAttachmentId: d.cupcakePhotoAttachmentId ?? null
     }, { emitEvent: false });
   }
 
@@ -937,6 +969,10 @@ export class EditOrderComponent implements OnInit, OnDestroy {
     this.attachmentService.DeleteAttachment(id).subscribe({
       next: () => {
         this.attachments = this.attachments.filter(a => a.id !== id);
+        // The server clears a deleted photo's contract choice too
+        for (const field of ['cakePhotoAttachmentId', 'cupcakePhotoAttachmentId'] as const) {
+          if (this.photoId(field) === id) this.weddingGroup.get(field)!.setValue(null, { emitEvent: false });
+        }
       },
       error: err => {
         const msg = err.error ?? err.message ?? 'Delete failed.';

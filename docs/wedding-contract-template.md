@@ -70,7 +70,8 @@ promote the dev copy) and switch the ID.
 The dev copy exists ([9999 - Zak's Development Template - Wedding contract](https://docs.google.com/document/d/1Idvu4Sh-i23018TFUaFIpJT8MhAi5_m8uc_suS7eEUc/edit))
 with every token below already placed, and its ID is set in `appsettings.Development.json`. Filled
 examples made from the seed orders are next to it ("9999 - Zak's Development SAMPLE - …"): Grace Miller
-(delivery, florist) and Chloe Bennett (pickup, kitchen cakes, cupcakes).
+(delivery, florist), Chloe Bennett (pickup, kitchen cakes, cupcakes) and Lauren Hayes (both inspiration photos;
+stand-in images, since the sample was filled outside the app).
 
 Type tokens directly into the document text in place of the `______` blanks. Token names are
 case-insensitive, and spaces inside the braces are fine (`{{ event_date }}`). Unknown tokens are left
@@ -119,6 +120,34 @@ app fields are optional, the token is blank when staff hasn't filled them in.
 | `{{deposit_date}}` / `{{final_payment_date}}` | Deposit / final payment dates | |
 | `{{balance}}` | Total − deposit | Final payment balance |
 | `{{final_due_date}}` | Event date − 10 days | Due by |
+
+### Inspiration photos (`{{cake_photo}}` / `{{cupcake_photo}}`)
+
+On a wedding order, staff pick one of the order's photo attachments under **Cake Design** and one under
+**Cupcake Design** (click a thumbnail; click again to clear). On **Generate Contract** each token becomes that
+photo, scaled to fit 3" × 3.5" without changing its proportions.
+
+Google Docs only inserts images from a link it can open without signing in, so for each photo the app:
+uploads a copy to a `_Contract Photos (temporary)` folder next to the contracts, turns on
+"Anyone with the link can view", inserts it, and deletes the copy. The contract keeps its own copy of
+the image; the original stays on the order's attachments. Leftover copies (from an interrupted run) are
+deleted on the next run.
+
+- JPEG, PNG and GIF only (HEIC/WebP can't be chosen; save them as JPEG). Max 50 MB and 25 megapixels.
+- A photo that can't be inserted doesn't stop the contract; the result message names it, and it can be
+  pasted in by hand.
+- If the Google account's sharing policy blocks "Anyone with the link", every photo fails with a message
+  saying so.
+
+In the template, each token sits on its own line, wrapped so the line disappears when no photo is chosen:
+
+```
+Inspiration photo:
+{{if:cake_photo}}{{cake_photo}}{{endif:cake_photo}}
+```
+
+The cupcake section's photo block (blank line, label, photo) is wrapped in `{{if:cupcake_photo}}` …
+`{{endif:cupcake_photo}}` so it only appears when a cupcake photo is chosen.
 
 ### Table-row tokens (cake and cupcake tables)
 
@@ -169,6 +198,7 @@ markers are removed; when it doesn't, the wrapped part is deleted:
 | `choose_board_color` | No board color chosen yet (keeps the "(Choose ONE option below)" prompt) |
 | `choose_flower_type` | No flower type chosen yet |
 | `choose_flowers_provided_by` | No "provided by" answer yet |
+| `cake_photo` / `cupcake_photo` | A cake / cupcake inspiration photo is chosen |
 
 ### Layout
 

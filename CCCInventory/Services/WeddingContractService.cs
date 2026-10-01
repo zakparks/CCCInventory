@@ -19,6 +19,9 @@ namespace CCCInventory.Services
 
     public class ContractException(string message) : Exception(message);
 
+    // An inspiration photo for the contract: Token is "cake_photo" or "cupcake_photo".
+    public record ContractPhoto(string Token, string FilePath, string ContentType, string FileName);
+
     // Fills the wedding contract Google Doc template from an order.
     //
     // The template holds {{tokens}} (see docs/wedding-contract-template.md):
@@ -31,6 +34,8 @@ namespace CCCInventory.Services
     //                                    {{if:x}} through the paragraph holding {{endif:x}} is deleted when
     //                                    x doesn't apply; otherwise just the markers are removed (see
     //                                    Conditions for the names).
+    //   {{cake_photo}} / {{cupcake_photo}} the chosen inspiration photo, inserted as an image after the
+    //                                    text fill (see InsertPhotosAsync)
     // A scalar token directly before a client (eSignature) box, e.g. "{{ceremony_time}} [box]", removes
     // the box when it has a value, so the contract never shows both data and a box to fill.
     // Token names are case-insensitive and may contain spaces inside the braces.
@@ -77,7 +82,8 @@ namespace CCCInventory.Services
 
         // mode: "overwrite" replaces the current contract (new doc, old one moved to Drive trash);
         //       "revision" creates an additional REVISED doc and leaves the current one alone.
-        public async Task<ContractResult> GenerateAsync(Order order, string mode, CancellationToken ct)
+        public async Task<ContractResult> GenerateAsync(Order order, string mode,
+            IReadOnlyList<ContractPhoto> photos, CancellationToken ct)
         {
             var templateId = _google.Settings.WeddingContractTemplateId;
             if (string.IsNullOrWhiteSpace(templateId))
@@ -101,7 +107,7 @@ namespace CCCInventory.Services
                     : [_google.Settings.WeddingContractFolderId]
             }, templateId);
             copyRequest.SupportsAllDrives = true;
-            copyRequest.Fields = "id, name, webViewLink";
+            copyRequest.Fields = "id, name, webViewLink, parents";
             var copy = await copyRequest.ExecuteAsync(ct);
 
             var result = new ContractResult
@@ -115,7 +121,21 @@ namespace CCCInventory.Services
             result.Warnings.AddRange(await FillAsync(docs, copy.Id,
                 BuildValues(order), BuildRawValues(order), BuildRows(order), ct));
 
-            // 3. Overwrite → trash the previous contract
+            // 3. Inspiration photos
+            var raw = BuildRawValues(order);
+            var chosen = PhotoTokens.Where(t => raw.GetValueOrDefault(t) is { Length: > 0 }).ToHashSet();
+            try
+            {
+                result.Warnings.AddRange(await InsertPhotosAsync(drive, docs, copy.Id, copy.Parents?.FirstOrDefault(),
+                    order.OrderNumber, photos, chosen, ct));
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // The contract itself is filled; don't lose it over a photo
+                result.Warnings.Add($"The inspiration photos could not be added: {ex.Message}");
+            }
+
+            // 4. Overwrite → trash the previous contract
             if (mode == "overwrite" && !string.IsNullOrEmpty(existingId))
             {
                 try
@@ -156,6 +176,7 @@ namespace CCCInventory.Services
         {
             var tokens = BuildValues(new Order { WeddingDetails = new WeddingDetails() }).Keys.ToList();
             tokens.AddRange(RowFields.SelectMany(g => g.Value.Select(f => $"{g.Key}.{f}")));
+            tokens.AddRange(PhotoTokens);
             return tokens.OrderBy(t => t).ToList();
         }
 
@@ -169,7 +190,8 @@ namespace CCCInventory.Services
         public static readonly string[] ConditionNames =
         [
             "delivery", "pickup", "florist", "flowers", "kitchen_cakes", "cupcakes",
-            "choose_board_color", "choose_flower_type", "choose_flowers_provided_by"
+            "choose_board_color", "choose_flower_type", "choose_flowers_provided_by",
+            "cake_photo", "cupcake_photo"
         ];
 
         // "if:pickup" / "endif:pickup" → "pickup"; anything else → null
@@ -189,6 +211,8 @@ namespace CCCInventory.Services
             ["choose_board_color"] = string.IsNullOrEmpty(rawValues.GetValueOrDefault("board_color")),
             ["choose_flower_type"] = string.IsNullOrEmpty(rawValues.GetValueOrDefault("flower_type")),
             ["choose_flowers_provided_by"] = string.IsNullOrEmpty(rawValues.GetValueOrDefault("flowers_provided_by")),
+            ["cake_photo"] = !string.IsNullOrEmpty(rawValues.GetValueOrDefault("cake_photo")),
+            ["cupcake_photo"] = !string.IsNullOrEmpty(rawValues.GetValueOrDefault("cupcake_photo")),
         };
 
         // Body ranges to delete for conditional sections that don't apply.
@@ -399,6 +423,9 @@ namespace CCCInventory.Services
                 ["board_color"] = w.CakeBoardColor ?? "",
                 ["flower_type"] = NoFlowers(w) ? "N/A" : w.FlowerType ?? "",
                 ["flowers_provided_by"] = NoFlowers(w) ? "N/A" : w.FlowersProvidedBy ?? "",
+                // Chosen inspiration photo attachment ids (the images go in after the text fill)
+                ["cake_photo"] = w.CakePhotoAttachmentId?.ToString(Us) ?? "",
+                ["cupcake_photo"] = w.CupcakePhotoAttachmentId?.ToString(Us) ?? "",
             };
         }
 
@@ -452,6 +479,220 @@ namespace CCCInventory.Services
                 ["icing"] = c.IcingFlavor ?? "",
             }).ToList(),
         };
+
+        // ── Inspiration photos ────────────────────────────────────────────────
+
+        public static readonly string[] PhotoTokens = ["cake_photo", "cupcake_photo"];
+
+        // Google Docs inserts images only from formats it supports, within 50 MB and 25 megapixels
+        private static readonly string[] DocsImageTypes = ["image/jpeg", "image/png", "image/gif"];
+        private const long MaxPhotoBytes = 50L * 1024 * 1024;
+        private const string PhotoFolderName = "_Contract Photos (temporary)";
+        // Fit inside 3" x 3.5", keeping the photo's proportions (Docs scales to fit both dimensions)
+        private const double PhotoMaxWidthPt = 216, PhotoMaxHeightPt = 252;
+
+        private static string PhotoLabel(string token) => token == "cupcake_photo" ? "cupcake" : "cake";
+
+        // Pass 3: each {{cake_photo}} / {{cupcake_photo}} left in the filled contract becomes its image.
+        // Docs only inserts images from a URL it can fetch without signing in, so each photo is uploaded
+        // to a temporary Drive folder, shared "anyone with the link" for the insert, then deleted (the
+        // contract keeps its own copy). A photo that can't be inserted is reported and its token removed,
+        // so the rest of the contract is unaffected.
+        private async Task<List<string>> InsertPhotosAsync(DriveService drive, DocsService docs, string docId,
+            string? parentFolderId, int orderNumber, IReadOnlyList<ContractPhoto> photos,
+            ISet<string> chosen, CancellationToken ct)
+        {
+            var warnings = new List<string>();
+            var doc = await docs.Documents.Get(docId).ExecuteAsync(ct);
+            var spots = FindPhotoTokens(doc);
+            if (spots.Count == 0) return warnings;
+
+            string? folderId = null;
+            if (photos.Count > 0 && spots.Any(sp => photos.Any(p => p.Token == sp.Token)))
+            {
+                try
+                {
+                    folderId = await GetPhotoFolderAsync(drive, parentFolderId, ct);
+                    await DeleteStalePhotosAsync(drive, folderId, ct);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    warnings.Add($"The inspiration photos could not be added (Drive folder error: {ex.Message}).");
+                }
+            }
+
+            // Bottom-most first so the positions of the tokens above stay valid
+            foreach (var spot in spots.OrderByDescending(sp => sp.Start))
+            {
+                var photo = photos.FirstOrDefault(p => p.Token == spot.Token);
+                var removeToken = new Request
+                {
+                    DeleteContentRange = new DeleteContentRangeRequest
+                    {
+                        Range = new Google.Apis.Docs.v1.Data.Range { StartIndex = spot.Start, EndIndex = spot.End }
+                    }
+                };
+
+                if (photo != null && folderId != null)
+                {
+                    var problem = PhotoProblem(photo);
+                    if (problem == null)
+                    {
+                        string? uploadedId = null;
+                        try
+                        {
+                            uploadedId = await UploadSharedPhotoAsync(drive, folderId, orderNumber, photo, ct);
+                            await BatchAsync(docs, docId, null,
+                                BuildPhotoRequests(spot, $"https://drive.google.com/uc?export=download&id={uploadedId}"), ct);
+                            continue;
+                        }
+                        catch (Exception ex) when (ex is not OperationCanceledException)
+                        {
+                            problem = uploadedId == null
+                                ? $"Google Drive wouldn't upload or share the temporary copy ({ex.Message}). If the Google account's sharing settings block \"Anyone with the link\", the photo has to be pasted into the contract by hand."
+                                : $"Google Docs couldn't use it ({ex.Message}). Photos must be under 50 MB and 25 megapixels.";
+                        }
+                        finally
+                        {
+                            if (uploadedId != null)
+                            {
+                                try { await drive.Files.Delete(uploadedId).ExecuteAsync(CancellationToken.None); }
+                                catch (Google.GoogleApiException) { /* swept up on the next run */ }
+                            }
+                        }
+                    }
+                    warnings.Add($"The {PhotoLabel(spot.Token)} inspiration photo ({photo.FileName}) wasn't added: {problem}");
+                }
+                else if (photo == null && chosen.Contains(spot.Token))
+                {
+                    warnings.Add($"The {PhotoLabel(spot.Token)} inspiration photo is no longer attached to the order.");
+                }
+
+                await BatchAsync(docs, docId, null, [removeToken], ct);
+            }
+            return warnings;
+        }
+
+        private static string? PhotoProblem(ContractPhoto photo)
+        {
+            if (!DocsImageTypes.Contains(photo.ContentType.ToLowerInvariant()))
+                return "Google Docs only accepts JPEG, PNG or GIF photos. Save it as a JPEG and choose that instead.";
+            var info = new FileInfo(photo.FilePath);
+            if (!info.Exists) return "the file is missing from the attachments folder.";
+            if (info.Length > MaxPhotoBytes) return "it is larger than Google Docs' 50 MB limit.";
+            return null;
+        }
+
+        public record PhotoSpot(string Token, int Start, int End);
+
+        // The image goes where the token starts, then the token text (one index later) is removed
+        public static List<Request> BuildPhotoRequests(PhotoSpot spot, string imageUri) =>
+        [
+            new Request
+            {
+                InsertInlineImage = new InsertInlineImageRequest
+                {
+                    Location = new Location { Index = spot.Start },
+                    Uri = imageUri,
+                    ObjectSize = new Size
+                    {
+                        Width = new Dimension { Magnitude = PhotoMaxWidthPt, Unit = "PT" },
+                        Height = new Dimension { Magnitude = PhotoMaxHeightPt, Unit = "PT" }
+                    }
+                }
+            },
+            new Request
+            {
+                DeleteContentRange = new DeleteContentRangeRequest
+                {
+                    Range = new Google.Apis.Docs.v1.Data.Range { StartIndex = spot.Start + 1, EndIndex = spot.End + 1 }
+                }
+            }
+        ];
+
+        public static List<PhotoSpot> FindPhotoTokens(Document doc)
+        {
+            var spots = new List<PhotoSpot>();
+            foreach (var el in doc.Body?.Content ?? [])
+            {
+                if (el.Paragraph == null || el.StartIndex == null) continue;
+                var text = ParagraphText(el.Paragraph);
+                foreach (Match m in TokenRegex.Matches(text))
+                {
+                    var token = Normalize(m.Groups[1].Value);
+                    if (PhotoTokens.Contains(token))
+                        spots.Add(new PhotoSpot(token, el.StartIndex.Value + m.Index, el.StartIndex.Value + m.Index + m.Length));
+                }
+            }
+            return spots;
+        }
+
+        private static async Task<string> GetPhotoFolderAsync(DriveService drive, string? parentFolderId, CancellationToken ct)
+        {
+            var parent = string.IsNullOrEmpty(parentFolderId) ? "root" : parentFolderId;
+            var list = drive.Files.List();
+            list.Q = $"name = '{PhotoFolderName}' and '{parent}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false";
+            list.Fields = "files(id)";
+            list.SupportsAllDrives = true;
+            list.IncludeItemsFromAllDrives = true;
+            var existing = (await list.ExecuteAsync(ct)).Files?.FirstOrDefault();
+            if (existing != null) return existing.Id;
+
+            var create = drive.Files.Create(new DriveFile
+            {
+                Name = PhotoFolderName,
+                MimeType = "application/vnd.google-apps.folder",
+                Parents = [parent]
+            });
+            create.Fields = "id";
+            create.SupportsAllDrives = true;
+            return (await create.ExecuteAsync(ct)).Id;
+        }
+
+        // Leftovers from a run that stopped before deleting its upload
+        private static async Task DeleteStalePhotosAsync(DriveService drive, string folderId, CancellationToken ct)
+        {
+            var list = drive.Files.List();
+            var cutoff = DateTime.UtcNow.AddHours(-1).ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture);
+            list.Q = $"'{folderId}' in parents and createdTime < '{cutoff}' and trashed = false";
+            list.Fields = "files(id)";
+            list.SupportsAllDrives = true;
+            list.IncludeItemsFromAllDrives = true;
+            foreach (var f in (await list.ExecuteAsync(ct)).Files ?? [])
+            {
+                try { await drive.Files.Delete(f.Id).ExecuteAsync(ct); }
+                catch (Google.GoogleApiException) { }
+            }
+        }
+
+        private static async Task<string> UploadSharedPhotoAsync(DriveService drive, string folderId, int orderNumber,
+            ContractPhoto photo, CancellationToken ct)
+        {
+            await using var stream = File.OpenRead(photo.FilePath);
+            var upload = drive.Files.Create(new DriveFile
+            {
+                Name = $"{orderNumber} - {PhotoLabel(photo.Token)} - {photo.FileName}",
+                Parents = [folderId]
+            }, stream, photo.ContentType);
+            upload.Fields = "id";
+            upload.SupportsAllDrives = true;
+            var progress = await upload.UploadAsync(ct);
+            if (progress.Exception != null) throw progress.Exception;
+            var id = upload.ResponseBody?.Id ?? throw new ContractException("Drive upload returned no file id.");
+
+            try
+            {
+                var share = drive.Permissions.Create(new Google.Apis.Drive.v3.Data.Permission { Type = "anyone", Role = "reader" }, id);
+                share.SupportsAllDrives = true;
+                await share.ExecuteAsync(ct);
+            }
+            catch
+            {
+                try { await drive.Files.Delete(id).ExecuteAsync(CancellationToken.None); } catch (Google.GoogleApiException) { }
+                throw;
+            }
+            return id;
+        }
 
         // ── Docs API fill ─────────────────────────────────────────────────────
 
@@ -561,6 +802,7 @@ namespace CCCInventory.Services
             var literals = AllText(doc).SelectMany(t => TokenRegex.Matches(t).Select(m => m.Value)).Distinct();
             foreach (var literal in literals)
             {
+                if (PhotoTokens.Contains(Normalize(literal[2..^2]))) continue;   // replaced by images in pass 3
                 var value = Resolve(Normalize(literal[2..^2]), values, rawValues, rows);
                 if (value == null)
                 {
@@ -648,11 +890,11 @@ namespace CCCInventory.Services
             return deletes;
         }
 
-        private static Task BatchAsync(DocsService docs, string docId, string revisionId, IList<Request> requests, CancellationToken ct) =>
+        private static Task BatchAsync(DocsService docs, string docId, string? revisionId, IList<Request> requests, CancellationToken ct) =>
             docs.Documents.BatchUpdate(new BatchUpdateDocumentRequest
             {
                 Requests = requests,
-                WriteControl = new WriteControl { RequiredRevisionId = revisionId }
+                WriteControl = revisionId == null ? null : new WriteControl { RequiredRevisionId = revisionId }
             }, docId).ExecuteAsync(ct);
 
         private static string? Resolve(string token, Dictionary<string, string> values,
