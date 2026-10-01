@@ -675,14 +675,17 @@ export class EditOrderComponent implements OnInit, OnDestroy {
   // Build Order from form values (shared by create/update/autoSave)
   buildOrderFromForm(): Order {
     const { cakeTierInfo, cupcakeInfo, pupcakeInfo, cookieInfo, otherItemInfo, orderDate, orderTime, wedding, ...formValue } = this.editOrderFormGroup.value;
+    // An empty number box is '' in the form, but these counts are integers in the API; 0 means
+    // "not filled in yet" (the order shows as Incomplete) so a half-entered item still saves
+    const count = (v: any) => (v === '' || v === null || v === undefined ? 0 : Number(v));
     return {
       ...formValue,
       weddingDetails: this.buildWeddingDetails(),
       orderDateTime: this.combineDateAndTime(),
-      cakes: cakeTierInfo,
-      cupcakes: cupcakeInfo,
-      pupcakes: pupcakeInfo,
-      cookies: cookieInfo,
+      cakes: cakeTierInfo.map((c: any) => ({ ...c, numTierLayers: count(c.numTierLayers) })),
+      cupcakes: cupcakeInfo.map((c: any) => ({ ...c, cupcakeQuantity: count(c.cupcakeQuantity) })),
+      pupcakes: pupcakeInfo.map((p: any) => ({ ...p, pupcakeQuantity: count(p.pupcakeQuantity) })),
+      cookies: cookieInfo.map((c: any) => ({ ...c, cookieQuantity: count(c.cookieQuantity) })),
       otherItems: otherItemInfo,
       cancelledFlag: this.orderToEdit.cancelledFlag,
       cancellationReason: this.orderToEdit.cancellationReason,
@@ -811,13 +814,7 @@ export class EditOrderComponent implements OnInit, OnDestroy {
   autoSave() {
     const order = this.buildOrderFromForm();
     if (this.createOrUpdate === 'Create') {
-      this.orderService.AddOrder(order).subscribe((result: number) => {
-        this.createOrUpdate = 'Update';
-        this.editOrderFormGroup.get('orderNumber')?.setValue(result, { emitEvent: false });
-        this.orderToEdit = { ...order, orderNumber: result };
-        this.loadAttachments(result);
-        this.toastSuccess(`Order ${result} auto-saved.`);
-      });
+      this.createInBackground(order).subscribe({ error: err => this.toastFailure(this.errorText(err, 'Auto-save failed.')) });
     } else {
       this.orderService.UpdateOrder(order).subscribe(() => {
         this.toastSuccess(`Order ${order.orderNumber} auto-saved.`);
@@ -938,13 +935,12 @@ export class EditOrderComponent implements OnInit, OnDestroy {
 
     if (this.createOrUpdate === 'Create') {
       // Save the order first so we have an orderNumber, then upload
-      const order = this.buildOrderFromForm();
-      this.orderService.AddOrder(order).subscribe((result: number) => {
-        this.createOrUpdate = 'Update';
-        this.editOrderFormGroup.get('orderNumber')?.setValue(result, { emitEvent: false });
-        this.orderToEdit = { ...order, orderNumber: result };
-        this.toastSuccess(`Order ${result} auto-saved.`);
-        this.doUpload(result, files, input);
+      this.createInBackground(this.buildOrderFromForm()).subscribe({
+        next: result => this.doUpload(result, files, input),
+        error: err => {
+          input.value = '';
+          this.toastFailure(this.errorText(err, 'The order could not be saved, so the file was not uploaded.'));
+        }
       });
     } else {
       this.doUpload(this.orderToEdit.orderNumber!, files, input);
@@ -1010,7 +1006,7 @@ export class EditOrderComponent implements OnInit, OnDestroy {
       },
       error: (err: any) => {
         this.generatingContract = false;
-        this.toastFailure(err.error?.message ?? err.message ?? 'Contract generation failed.');
+        this.toastFailure(this.errorText(err, 'Contract generation failed.'));
       }
     });
   }
@@ -1018,15 +1014,28 @@ export class EditOrderComponent implements OnInit, OnDestroy {
   // Saves the form first (creating the order if needed) so the contract matches what's on screen
   private saveForContract(): Observable<number> {
     const order = this.buildOrderFromForm();
-    if (this.createOrUpdate === 'Create') {
-      return this.orderService.AddOrder(order).pipe(tap(result => {
-        this.createOrUpdate = 'Update';
-        this.editOrderFormGroup.get('orderNumber')?.setValue(result, { emitEvent: false });
-        this.orderToEdit = { ...order, orderNumber: result };
-        this.loadAttachments(result);
-      }));
-    }
+    if (this.createOrUpdate === 'Create') return this.createInBackground(order);
     return this.orderService.UpdateOrder(order).pipe(tap(() => this.orderToEdit = order));
+  }
+
+  // Readable message from an API error: { message }, plain text, or ASP.NET validation { errors }
+  private errorText(err: any, fallback: string): string {
+    const e = err?.error;
+    if (typeof e === 'string' && e) return e;
+    if (e?.message) return e.message;
+    if (e?.errors) return Object.values(e.errors).flat().join(' ');
+    return err?.message ?? fallback;
+  }
+
+  // Creates a new order without leaving the form (autosave, first attachment, contract) and switches
+  // the form to update mode
+  private createInBackground(order: Order): Observable<number> {
+    return this.orderService.AddOrder(order).pipe(tap(result => {
+      this.createOrUpdate = 'Update';
+      this.editOrderFormGroup.get('orderNumber')?.setValue(result, { emitEvent: false });
+      this.orderToEdit = { ...order, orderNumber: result };
+      this.toastSuccess(`Order ${result} auto-saved.`);
+    }));
   }
 
   addRow(formGroupName: string, formGroup: FormGroup) {

@@ -37,11 +37,7 @@ namespace CCCInventory.Controllers
         [HttpPost("{orderNumber:int}")]
         public async Task<IActionResult> Generate(int orderNumber, [FromBody] GenerateRequest request, CancellationToken ct)
         {
-            var order = await _context.Orders
-                .Include(o => o.Cakes)
-                .Include(o => o.Cupcakes)
-                .Include(o => o.WeddingDetails)
-                .FirstOrDefaultAsync(o => o.OrderNumber == orderNumber, ct);
+            var order = await LoadOrderAsync(orderNumber, ct);
 
             if (order == null)
                 return NotFound(new { message = $"Order {orderNumber} not found" });
@@ -69,20 +65,11 @@ namespace CCCInventory.Controllers
             {
                 return BadRequest(new { message = "Google took too long to respond. Check Drive for a partly filled copy, then try again." });
             }
-            catch (ContractException ex)
+            catch (Exception ex) when (ContractErrors.UserMessage(ex) is { } message)
             {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (Google.Apis.Auth.OAuth2.Responses.TokenResponseException ex)
-            {
-                // The saved Google login was revoked or expired (in OAuth "Testing" mode, after 7 days)
-                _logger.LogWarning(ex, "Google token refresh failed generating contract for order {OrderNumber}", orderNumber);
-                return BadRequest(new { message = "The Google connection has expired. Reconnect Google on the Management page and try again." });
-            }
-            catch (Google.GoogleApiException ex)
-            {
-                _logger.LogError(ex, "Google API error generating contract for order {OrderNumber}", orderNumber);
-                return BadRequest(new { message = $"Google API error: {ex.Message}" });
+                if (ex is not ContractException)
+                    _logger.LogWarning(ex, "Google error generating contract for order {OrderNumber}", orderNumber);
+                return BadRequest(new { message });
             }
 
             if (order.WeddingDetails == null)
@@ -112,11 +99,7 @@ namespace CCCInventory.Controllers
         [HttpGet("{orderNumber:int}/preview")]
         public async Task<IActionResult> Preview(int orderNumber, CancellationToken ct)
         {
-            var order = await _context.Orders
-                .Include(o => o.Cakes)
-                .Include(o => o.Cupcakes)
-                .Include(o => o.WeddingDetails)
-                .FirstOrDefaultAsync(o => o.OrderNumber == orderNumber, ct);
+            var order = await LoadOrderAsync(orderNumber, ct);
             if (order == null)
                 return NotFound(new { message = $"Order {orderNumber} not found" });
 
@@ -128,6 +111,14 @@ namespace CCCInventory.Controllers
                 photos = (await LoadPhotosAsync(order, ct)).ToDictionary(p => p.Token, p => p.FileName)
             });
         }
+
+        // Everything the contract reads from an order
+        private Task<Order?> LoadOrderAsync(int orderNumber, CancellationToken ct) =>
+            _context.Orders
+                .Include(o => o.Cakes)
+                .Include(o => o.Cupcakes)
+                .Include(o => o.WeddingDetails)
+                .FirstOrDefaultAsync(o => o.OrderNumber == orderNumber, ct);
 
         // The order's chosen inspiration photos (attachments of this order only)
         private async Task<List<ContractPhoto>> LoadPhotosAsync(Order order, CancellationToken ct)

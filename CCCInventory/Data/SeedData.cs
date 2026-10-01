@@ -34,8 +34,7 @@ namespace CCCInventory.Data
                     .Where(o => o.IsWedding && o.CustName == customer)
                     .Select(o => new { o.OrderNumber, o.WeddingDetails })
                     .FirstOrDefault();
-                if (order?.WeddingDetails == null || context.OrderAttachments.Any(a => a.OrderNumber == order.OrderNumber))
-                    continue;
+                if (order?.WeddingDetails == null) continue;
 
                 OrderAttachment Attach(string file)
                 {

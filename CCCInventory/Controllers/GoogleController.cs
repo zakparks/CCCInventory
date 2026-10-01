@@ -28,7 +28,6 @@ namespace CCCInventory.Controllers
             _logger = logger;
         }
 
-
         [HttpGet("status")]
         public async Task<IActionResult> Status(CancellationToken ct)
         {
@@ -111,13 +110,9 @@ namespace CCCInventory.Controllers
             {
                 return Ok(await _contracts.CheckTemplateAsync(ct));
             }
-            catch (ContractException ex)
+            catch (Exception ex) when (ContractErrors.UserMessage(ex) is { } message)
             {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (Google.GoogleApiException ex)
-            {
-                return BadRequest(new { message = $"Google API error: {ex.Message}" });
+                return BadRequest(new { message });
             }
         }
 

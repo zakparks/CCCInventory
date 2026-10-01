@@ -19,6 +19,20 @@ namespace CCCInventory.Services
 
     public class ContractException(string message) : Exception(message);
 
+    public static class ContractErrors
+    {
+        // What to tell the user about a failed Google call, or null for an unexpected error (a real 500)
+        public static string? UserMessage(Exception ex) => ex switch
+        {
+            ContractException => ex.Message,
+            // The saved Google login was revoked or expired (in OAuth "Testing" mode, after 7 days)
+            Google.Apis.Auth.OAuth2.Responses.TokenResponseException =>
+                "The Google connection has expired. Reconnect Google on the Management page and try again.",
+            Google.GoogleApiException => $"Google API error: {ex.Message}",
+            _ => null
+        };
+    }
+
     // An inspiration photo for the contract: Token is "cake_photo" or "cupcake_photo".
     public record ContractPhoto(string Token, string FilePath, string ContentType, string FileName);
 
@@ -42,6 +56,8 @@ namespace CCCInventory.Services
     public class WeddingContractService
     {
         private const string Check = "✔ ";
+        // Stand-in for a client (eSignature) box, an inline object, in ParagraphText
+        private const char ClientBox = '\uFFFC';
         private static readonly CultureInfo Us = CultureInfo.GetCultureInfo("en-US");
         private static readonly Regex TokenRegex = new(@"\{\{([^{}]+)\}\}", RegexOptions.Compiled);
         private static readonly string[] RowGroups = ["main", "kitchen", "cupcake"];
@@ -80,18 +96,22 @@ namespace CCCInventory.Services
 
         // ── Generate ──────────────────────────────────────────────────────────
 
+        private async Task<(string TemplateId, DriveService Drive, DocsService Docs)> ConnectAsync(CancellationToken ct)
+        {
+            var templateId = _google.Settings.WeddingContractTemplateId;
+            if (string.IsNullOrWhiteSpace(templateId))
+                throw new ContractException("No wedding contract template is configured (Google:WeddingContractTemplateId).");
+            var services = await _google.CreateServicesAsync(ct)
+                ?? throw new ContractException("Google is not connected. Connect it on the Management page.");
+            return (templateId, services.Drive, services.Docs);
+        }
+
         // mode: "overwrite" replaces the current contract (new doc, old one moved to Drive trash);
         //       "revision" creates an additional REVISED doc and leaves the current one alone.
         public async Task<ContractResult> GenerateAsync(Order order, string mode,
             IReadOnlyList<ContractPhoto> photos, CancellationToken ct)
         {
-            var templateId = _google.Settings.WeddingContractTemplateId;
-            if (string.IsNullOrWhiteSpace(templateId))
-                throw new ContractException("No wedding contract template is configured (Google:WeddingContractTemplateId).");
-
-            var services = await _google.CreateServicesAsync(ct)
-                ?? throw new ContractException("Google is not connected. Connect it on the Management page.");
-            var (drive, docs) = services;
+            var (templateId, drive, docs) = await ConnectAsync(ct);
 
             var details = order.WeddingDetails ?? new WeddingDetails();
             var existingId = details.ContractDocId;
@@ -118,11 +138,10 @@ namespace CCCInventory.Services
             };
 
             // 2. Fill it
-            result.Warnings.AddRange(await FillAsync(docs, copy.Id,
-                BuildValues(order), BuildRawValues(order), BuildRows(order), ct));
+            var raw = BuildRawValues(order);
+            result.Warnings.AddRange(await FillAsync(docs, copy.Id, BuildValues(order), raw, BuildRows(order), ct));
 
             // 3. Inspiration photos
-            var raw = BuildRawValues(order);
             var chosen = PhotoTokens.Where(t => raw.GetValueOrDefault(t) is { Length: > 0 }).ToHashSet();
             try
             {
@@ -157,13 +176,8 @@ namespace CCCInventory.Services
 
         public async Task<object> CheckTemplateAsync(CancellationToken ct)
         {
-            var templateId = _google.Settings.WeddingContractTemplateId;
-            if (string.IsNullOrWhiteSpace(templateId))
-                throw new ContractException("No wedding contract template is configured (Google:WeddingContractTemplateId).");
-            var services = await _google.CreateServicesAsync(ct)
-                ?? throw new ContractException("Google is not connected.");
-
-            var doc = await services.Docs.Documents.Get(templateId).ExecuteAsync(ct);
+            var (templateId, _, docs) = await ConnectAsync(ct);
+            var doc = await docs.Documents.Get(templateId).ExecuteAsync(ct);
             var found = AllText(doc).SelectMany(t => TokenRegex.Matches(t).Select(m => Normalize(m.Groups[1].Value)))
                 .Distinct().OrderBy(t => t).ToList();
             var known = KnownTokens();
@@ -249,9 +263,7 @@ namespace CCCInventory.Services
                         }
                         else
                         {
-                            // The body's last paragraph, and one right before a table, must keep its newline
-                            bool keepNewline = e == body.Count - 1 || body[e + 1].Table != null;
-                            removed.Add((start.ParaStart, body[e].EndIndex!.Value - (keepNewline ? 1 : 0)));
+                            removed.Add((start.ParaStart, ParagraphDeleteEnd(body, e)));
                         }
                     }
                 }
@@ -259,6 +271,19 @@ namespace CCCInventory.Services
             // A removal inside another (e.g. a "(Choose ONE…)" prompt inside a removed flowers block) is covered by it
             return removed.Where(r => !removed.Any(o => o != r && o.Start <= r.Start && r.End <= o.End)).ToList();
         }
+
+        // Where deleting body paragraph e (through its end) stops: the body's last paragraph, and one right
+        // before a table, must keep its newline
+        private static int ParagraphDeleteEnd(IList<StructuralElement> body, int e) =>
+            body[e].EndIndex!.Value - (e == body.Count - 1 || body[e + 1].Table != null ? 1 : 0);
+
+        private static Request DeleteRange(int start, int end) => new()
+        {
+            DeleteContentRange = new DeleteContentRangeRequest
+            {
+                Range = new Google.Apis.Docs.v1.Data.Range { StartIndex = start, EndIndex = end }
+            }
+        };
 
         // Paragraph text with one placeholder character per index of each non-text element (inline
         // objects such as client boxes become \uFFFC), so string positions map to document indices.
@@ -268,7 +293,7 @@ namespace CCCInventory.Services
             foreach (var pe in para.Elements ?? [])
             {
                 if (pe.TextRun != null) sb.Append(pe.TextRun.Content);
-                else sb.Append(pe.InlineObjectElement != null ? '\uFFFC' : '\uFFFD',
+                else sb.Append(pe.InlineObjectElement != null ? ClientBox : '\uFFFD',
                     Math.Max(1, (pe.EndIndex ?? 0) - (pe.StartIndex ?? 0)));
             }
             return sb.ToString();
@@ -525,14 +550,6 @@ namespace CCCInventory.Services
             foreach (var spot in spots.OrderByDescending(sp => sp.Start))
             {
                 var photo = photos.FirstOrDefault(p => p.Token == spot.Token);
-                var removeToken = new Request
-                {
-                    DeleteContentRange = new DeleteContentRangeRequest
-                    {
-                        Range = new Google.Apis.Docs.v1.Data.Range { StartIndex = spot.Start, EndIndex = spot.End }
-                    }
-                };
-
                 if (photo != null && folderId != null)
                 {
                     var problem = PhotoProblem(photo);
@@ -568,7 +585,7 @@ namespace CCCInventory.Services
                     warnings.Add($"The {PhotoLabel(spot.Token)} inspiration photo is no longer attached to the order.");
                 }
 
-                await BatchAsync(docs, docId, null, [removeToken], ct);
+                await BatchAsync(docs, docId, null, [DeleteRange(spot.Start, spot.End)], ct);
             }
             return warnings;
         }
@@ -601,13 +618,7 @@ namespace CCCInventory.Services
                     }
                 }
             },
-            new Request
-            {
-                DeleteContentRange = new DeleteContentRangeRequest
-                {
-                    Range = new Google.Apis.Docs.v1.Data.Range { StartIndex = spot.Start + 1, EndIndex = spot.End + 1 }
-                }
-            }
+            DeleteRange(spot.Start + 1, spot.End + 1)
         ];
 
         public static List<PhotoSpot> FindPhotoTokens(Document doc)
@@ -784,16 +795,14 @@ namespace CCCInventory.Services
             // inside tables, the other deletes are whole or partial body paragraphs).
             var sections = FindRemovedSections(doc, Conditions(values, rawValues));
             bool InRemovedSection(int index) => sections.Any(r => index >= r.Start && index < r.End);
-            DeleteContentRangeRequest Delete(int start, int end) =>
-                new() { Range = new Google.Apis.Docs.v1.Data.Range { StartIndex = start, EndIndex = end } };
 
             var requests = inserts
                 .Where(i => !InRemovedSection(i.Index))
                 .Select(i => (Index: i.Index, Request: new Request { InsertText = new InsertTextRequest { Location = new Location { Index = i.Index }, Text = i.Text } }))
                 .Concat(BuildFieldDeletes(doc, values, rawValues, rows)
                     .Where(d => !InRemovedSection(d.Start))
-                    .Select(d => (Index: d.Start, Request: new Request { DeleteContentRange = Delete(d.Start, d.End) })))
-                .Concat(sections.Select(r => (Index: r.Start, Request: new Request { DeleteContentRange = Delete(r.Start, r.End) })))
+                    .Select(d => (Index: d.Start, Request: DeleteRange(d.Start, d.End))))
+                .Concat(sections.Select(r => (Index: r.Start, Request: DeleteRange(r.Start, r.End))))
                 .OrderByDescending(x => x.Index)
                 .Select(x => x.Request)
                 .ToList();
@@ -802,8 +811,9 @@ namespace CCCInventory.Services
             var literals = AllText(doc).SelectMany(t => TokenRegex.Matches(t).Select(m => m.Value)).Distinct();
             foreach (var literal in literals)
             {
-                if (PhotoTokens.Contains(Normalize(literal[2..^2]))) continue;   // replaced by images in pass 3
-                var value = Resolve(Normalize(literal[2..^2]), values, rawValues, rows);
+                var token = Normalize(literal[2..^2]);
+                if (PhotoTokens.Contains(token)) continue;   // replaced by images in pass 3
+                var value = Resolve(token, values, rawValues, rows);
                 if (value == null)
                 {
                     unknown.Add(literal);
@@ -832,7 +842,6 @@ namespace CCCInventory.Services
             Dictionary<string, string> rawValues,
             Dictionary<string, List<Dictionary<string, string>>> rows)
         {
-            const char Box = '\uFFFC';
             var deletes = new List<(int Start, int End)>();
             var body = doc.Body?.Content ?? [];
             for (int e = 0; e < body.Count; e++)
@@ -856,7 +865,7 @@ namespace CCCInventory.Services
                     {
                         for (int i = 0; i < text.Length; i++)
                         {
-                            if (text[i] != Box) continue;
+                            if (text[i] != ClientBox) continue;
                             if (i > 0 && text[i - 1] == ' ') deletes.Add((baseIndex + i - 1, baseIndex + i + 1));
                             else if (i + 1 < text.Length && text[i + 1] == ' ') deletes.Add((baseIndex + i, baseIndex + i + 2));
                             else deletes.Add((baseIndex + i, baseIndex + i + 1));
@@ -864,9 +873,7 @@ namespace CCCInventory.Services
                     }
                     else
                     {
-                        // Whole line; the body's last paragraph and one right before a table must keep its newline
-                        bool keepNewline = e == body.Count - 1 || body[e + 1].Table != null;
-                        deletes.Add((baseIndex, body[e].EndIndex!.Value - (keepNewline ? 1 : 0)));
+                        deletes.Add((baseIndex, ParagraphDeleteEnd(body, e)));   // the whole line
                     }
                     continue;
                 }
@@ -875,7 +882,7 @@ namespace CCCInventory.Services
                 {
                     int after = m.Index + m.Length, j = after;
                     if (j < text.Length && text[j] == ' ') j++;
-                    if (j >= text.Length || text[j] != Box) continue;
+                    if (j >= text.Length || text[j] != ClientBox) continue;
                     var value = Resolve(Normalize(m.Groups[1].Value), values, rawValues, rows);
                     if (value == null) continue;
                     if (value != "")
