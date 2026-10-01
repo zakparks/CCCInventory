@@ -53,10 +53,21 @@ namespace CCCInventory.Controllers
             if (mode is not ("new" or "overwrite" or "revision"))
                 return BadRequest(new { message = "Choose whether to overwrite the current contract or create a revision." });
 
+            var photos = await LoadPhotosAsync(order, ct);
+
+            // Once the copy is made, finish it even if the browser stops waiting (a dropped request would
+            // otherwise leave a half-filled contract in Drive that the order doesn't point to)
+            using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+            var work = timeout.Token;
+
             ContractResult result;
             try
             {
-                result = await _contracts.GenerateAsync(order, mode, await LoadPhotosAsync(order, ct), ct);
+                result = await _contracts.GenerateAsync(order, mode, photos, work);
+            }
+            catch (OperationCanceledException) when (timeout.IsCancellationRequested)
+            {
+                return BadRequest(new { message = "Google took too long to respond. Check Drive for a partly filled copy, then try again." });
             }
             catch (ContractException ex)
             {
@@ -85,7 +96,7 @@ namespace CCCInventory.Controllers
 
             _audit.PrepareLog(await GetStaffMemberIdAsync(), "Order", orderNumber, "Contract",
                 $"{(mode == "new" ? "Created" : mode == "overwrite" ? "Overwrote" : "Revised")}: {result.Name}");
-            await _context.SaveChangesAsync(ct);
+            await _context.SaveChangesAsync(CancellationToken.None);
 
             return Ok(new
             {
