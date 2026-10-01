@@ -22,8 +22,13 @@ namespace CCCInventory.Controllers
         public AttachmentController(DataContext context, IWebHostEnvironment env)
         {
             _context = context;
-            _attachmentsRoot = Path.Combine(env.ContentRootPath, "attachments");
+            _attachmentsRoot = AttachmentsRoot(env);
         }
+
+        public static string AttachmentsRoot(IWebHostEnvironment env) => Path.Combine(env.ContentRootPath, "attachments");
+
+        public static string FilePath(string attachmentsRoot, OrderAttachment attachment) =>
+            Path.Combine(attachmentsRoot, attachment.OrderNumber.ToString(), attachment.StoredFileName);
 
         // GET /api/attachment/{orderNumber}
         [HttpGet("{orderNumber:int}")]
@@ -85,11 +90,22 @@ namespace CCCInventory.Controllers
             if (attachment == null)
                 return NotFound();
 
-            var filePath = Path.Combine(_attachmentsRoot, attachment.OrderNumber.ToString(), attachment.StoredFileName);
+            var filePath = FilePath(_attachmentsRoot, attachment);
             if (System.IO.File.Exists(filePath))
                 System.IO.File.Delete(filePath);
 
             _context.OrderAttachments.Remove(attachment);
+
+            // An attachment chosen as a contract inspiration photo is no longer chosen
+            var details = await _context.WeddingDetails
+                .Where(w => w.CakePhotoAttachmentId == id || w.CupcakePhotoAttachmentId == id)
+                .ToListAsync();
+            foreach (var w in details)
+            {
+                if (w.CakePhotoAttachmentId == id) w.CakePhotoAttachmentId = null;
+                if (w.CupcakePhotoAttachmentId == id) w.CupcakePhotoAttachmentId = null;
+            }
+
             await _context.SaveChangesAsync();
             return NoContent();
         }
@@ -102,7 +118,7 @@ namespace CCCInventory.Controllers
             if (attachment == null)
                 return NotFound();
 
-            var filePath = Path.Combine(_attachmentsRoot, attachment.OrderNumber.ToString(), attachment.StoredFileName);
+            var filePath = FilePath(_attachmentsRoot, attachment);
             if (!System.IO.File.Exists(filePath))
                 return NotFound("File not found on disk.");
 

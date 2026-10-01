@@ -282,3 +282,67 @@
     </div>
   }
 </div>
+
+<!-- ─── Google Integration ──────────────────────────────────────── -->
+<div class="mgmt-section">
+  <div class="mgmt-section-header" [class.collapsed]="!googleExpanded"
+       (click)="googleExpanded = !googleExpanded"
+       [title]="googleExpanded ? 'Collapse' : 'Expand'">
+    <span>Google Integration (Wedding Contracts)</span>
+    <span class="collapse-indicator">@if (googleExpanded) { &#8743; } @else { &#8744; }</span>
+  </div>
+  @if (googleExpanded) {
+    <div class="mgmt-section-body">
+      @if (googleMsg) {
+        <div class="alert py-2 mb-2" [class.alert-success]="!googleMsgIsError" [class.alert-danger]="googleMsgIsError">
+          {{ googleMsg }}
+        </div>
+      }
+
+      @if (!googleStatus) {
+        <p class="text-muted mb-0">Loading…</p>
+      } @else if (!googleStatus.configured) {
+        <p class="mb-0">
+          Google is not configured on the server. Set <code>Google__ClientId</code> and
+          <code>Google__ClientSecret</code> (see <code>docs/wedding-contract-template.md</code>).
+        </p>
+      } @else {
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+          @if (googleStatus.connected) {
+            <span>Connected as <strong>{{ googleStatus.accountEmail || 'unknown account' }}</strong></span>
+            <button class="btn btn-sm btn-outline-danger" type="button" (click)="disconnectGoogle()">Disconnect</button>
+          } @else {
+            <span class="text-muted">Not connected.</span>
+            <button class="btn btn-sm btn-primary" type="button" (click)="connectGoogle()">Connect Google Account</button>
+          }
+        </div>
+        <p class="small text-muted mb-2">
+          Connect the Google account that owns the Wedding Contracts folder and the contract template.
+        </p>
+
+        @if (googleStatus.connected) {
+          @if (!googleStatus.templateConfigured) {
+            <p class="mb-0">No contract template is configured (<code>Google:WeddingContractTemplateId</code>).</p>
+          } @else {
+            <button class="btn btn-sm btn-outline-secondary" type="button" [disabled]="checkingTemplate" (click)="checkTemplate()">
+              {{ checkingTemplate ? 'Checking…' : 'Check Contract Template' }}
+            </button>
+            @if (templateCheck) {
+              <div class="mt-2 small">
+                <div><strong>{{ templateCheck.templateName }}</strong>: {{ templateCheck.found.length }} tokens found.</div>
+                @if (templateCheck.unknown.length > 0) {
+                  <div class="text-danger">Unrecognized (will be left as-is): {{ templateCheck.unknown.join(', ') }}</div>
+                } @else {
+                  <div class="text-success">All tokens recognized.</div>
+                }
+                @if (templateCheck.unused.length > 0) {
+                  <div class="text-muted">Available but not used: {{ templateCheck.unused.join(', ') }}</div>
+                }
+              </div>
+            }
+          }
+        }
+      }
+    </div>
+  }
+</div>

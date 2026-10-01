@@ -2,13 +2,61 @@ namespace CCCInventory.Data
 {
     public static class SeedData
     {
-        public static void Initialize(DataContext context)
+        public static void Initialize(DataContext context, string? attachmentsRoot = null)
         {
             SeedOptions(context);
             SeedSignatureCupcakes(context);
             SeedCustomers(context);
+            bool freshOrders = !context.Orders.Any();
             SeedOrders(context);
             LinkOrdersToCustomers(context);
+            if (freshOrders && attachmentsRoot != null) SeedWeddingPhotos(context, attachmentsRoot);
+        }
+
+        // Placeholder inspiration photos (Data/SeedImages) attached to the seed wedding orders and chosen for
+        // the contract: Lauren has both, Grace and Chloe the cake photo only (Chloe's cupcakes have none),
+        // Ava (incomplete) none. Runs only right after the seed orders are created.
+        private static void SeedWeddingPhotos(DataContext context, string attachmentsRoot)
+        {
+            var imageDir = Path.Combine(AppContext.BaseDirectory, "Data", "SeedImages");
+            if (!Directory.Exists(imageDir)) return;
+
+            var plan = new (string Customer, bool Cake, bool Cupcake)[]
+            {
+                ("Grace Miller", true, false),
+                ("Chloe Bennett", true, false),
+                ("Lauren Hayes", true, true),
+            };
+            bool changed = false;
+            foreach (var (customer, cake, cupcake) in plan)
+            {
+                var order = context.Orders
+                    .Where(o => o.IsWedding && o.CustName == customer)
+                    .Select(o => new { o.OrderNumber, o.WeddingDetails })
+                    .FirstOrDefault();
+                if (order?.WeddingDetails == null) continue;
+
+                OrderAttachment Attach(string file)
+                {
+                    var stored = $"{Guid.NewGuid()}.jpg";
+                    var dir = Path.Combine(attachmentsRoot, order.OrderNumber.ToString());
+                    Directory.CreateDirectory(dir);
+                    File.Copy(Path.Combine(imageDir, file), Path.Combine(dir, stored));
+                    var attachment = new OrderAttachment
+                    {
+                        OrderNumber = order.OrderNumber, FileName = file, StoredFileName = stored,
+                        ContentType = "image/jpeg", UploadedAt = DateTime.Now
+                    };
+                    context.OrderAttachments.Add(attachment);
+                    context.SaveChanges();
+                    return attachment;
+                }
+
+                if (cake) order.WeddingDetails.CakePhotoAttachmentId = Attach("cake-inspiration.jpg").Id;
+                if (cupcake) order.WeddingDetails.CupcakePhotoAttachmentId = Attach("cupcake-inspiration.jpg").Id;
+                changed = true;
+            }
+            if (changed) context.SaveChanges();
         }
 
         private static void SeedOptions(DataContext context)
@@ -23,7 +71,8 @@ namespace CCCInventory.Data
                 context.SaveChanges();
             }
 
-            if (context.OptionItems.Any()) return;
+            // CookieSize is seeded above, so ignore it when deciding whether the full list already exists
+            if (context.OptionItems.Any(o => o.Category != "CookieSize")) return;
 
             var options = new List<OptionItem>
             {
@@ -132,7 +181,12 @@ namespace CCCInventory.Data
                 new Customer { FirstName = "Heather",   LastName = "Thompson",   Email = "heather.t@email.com",       Phone = "555-776-8899" },
                 new Customer { FirstName = "Lisa",      LastName = "Rodriguez",  Email = "lisa.r@email.com",          Phone = "555-201-3004" },
                 new Customer { FirstName = "Pat",       LastName = "Wilson",     Email = "pat.w@email.com",           Phone = "555-100-2003" },
-                new Customer { FirstName = "Tom",       LastName = "Bradley",    Email = "tom.b@email.com",           Phone = "555-301-4005" }
+                new Customer { FirstName = "Tom",       LastName = "Bradley",    Email = "tom.b@email.com",           Phone = "555-301-4005" },
+                // Wedding customers
+                new Customer { FirstName = "Grace",     LastName = "Miller",     Email = "grace.m@email.com",         Phone = "555-410-2201" },
+                new Customer { FirstName = "Chloe",     LastName = "Bennett",    Email = "chloe.b@email.com",         Phone = "555-410-3302" },
+                new Customer { FirstName = "Lauren",    LastName = "Hayes",      Email = "lauren.h@email.com",        Phone = "555-410-4403" },
+                new Customer { FirstName = "Ava",       LastName = "Collins",    Email = "ava.c@email.com",           Phone = "555-410-5504" }
             );
             context.SaveChanges();
         }
@@ -600,6 +654,145 @@ namespace CCCInventory.Data
                     TotalCost = 52.00, DepositAmount = 26.00, DepositPaymentMethod = "Zelle",
                     DateOrderPlaced = today.AddDays(-15), ContractSent = true,
                     Cupcakes = [new Cupcake { CupcakeSize = "Mini", CupcakeQuantity = 24, CupcakeFlavor = "Champagne", FillingFlavor = "None", IcingFlavor = "Blush Buttercream" }]
+                },
+
+                // ══════════════════════════════════════════════════════════════
+                // WEDDING ORDERS — one per week, plus one incomplete wedding
+                // ══════════════════════════════════════════════════════════════
+
+                // w1 — archived wedding (delivery), fully filled in
+                new Order
+                {
+                    Title = "Grace & Daniel - Wedding",
+                    IsWedding = true,
+                    OrderDateTime = w1Sat.AddHours(11),
+                    CustName = "Grace Miller", CustPhone = "555-410-2201", CustEmail = "grace.m@email.com",
+                    SecondaryName = "Karen Miller", SecondaryPhone = "555-410-2299",
+                    Details = "Cake A - top tier, ivory buttercream with pressed florals\nCake B - middle\nCake C - base",
+                    OrderType = "Delivery", DeliveryLocation = "Southpointe Golf Club, 360 Southpointe Blvd, Canonsburg PA",
+                    InitialContact = "Website form",
+                    TotalCost = 640.00, DepositAmount = 160.00, DepositPaymentMethod = "Card", DepositDateTime = today.AddDays(-120),
+                    FinalPaymentMethod = "Card", FinalPaymentDateTime = today.AddDays(-25),
+                    DateOrderPlaced = today.AddDays(-121), PaidInFull = true, ContractSent = true, DayOfTextSent = true, ConfirmationTextSent = true,
+                    Cakes = [
+                        new Cake { TierSize = "6\"",  NumTierLayers = 3, CakeShape = "Round", CakeFlavor = "Champagne", FillingFlavor = "Strawberry", IcingFlavor = "Vanilla Buttercream", SplitTier = false },
+                        new Cake { TierSize = "8\"",  NumTierLayers = 3, CakeShape = "Round", CakeFlavor = "Vanilla",   FillingFlavor = "Raspberry",  IcingFlavor = "Vanilla Buttercream", SplitTier = false },
+                        new Cake { TierSize = "10\"", NumTierLayers = 3, CakeShape = "Round", CakeFlavor = "Chocolate", FillingFlavor = "Chocolate Mousse", IcingFlavor = "Vanilla Buttercream", SplitTier = false }
+                    ],
+                    WeddingDetails = new WeddingDetails
+                    {
+                        EventDate = w1Sat,
+                        CeremonySameLocation = true, CeremonyTime = "15:00", ReceptionTime = "17:00",
+                        Partner2Name = "Daniel Ortiz", Partner2Phone = "555-410-2202",
+                        MainCakeDesignDescription = "Smooth ivory buttercream, gold leaf accents, florist-supplied garden roses",
+                        DayOfContactTitle = "Mother of the Bride",
+                        VenueContactName = "Dana Price", VenueContactPhone = "555-410-2290",
+                        CakeBoardColor = "Gold", CakeTopper = true, HasFlowers = true,
+                        FlowerType = "Live", FlowersProvidedBy = "Florist",
+                        FloristName = "Petal & Stem", FloristPhone = "555-410-2280", FloristDeliveryTime = "09:30",
+                        DeliveryWindowEnd = "13:00",
+                        TotalServings = 74
+                    }
+                },
+
+                // w2 — wedding pickup, with kitchen cake and cupcakes
+                new Order
+                {
+                    Title = "Chloe & Marcus - Wedding",
+                    IsWedding = true,
+                    OrderDateTime = w2Fri.AddHours(15),
+                    CustName = "Chloe Bennett", CustPhone = "555-410-3302", CustEmail = "chloe.b@email.com",
+                    SecondaryName = "Jenna Lowe", SecondaryPhone = "555-410-3399",
+                    Details = "Cake A - top\nCake B - base\nKitchen sheet stays boxed",
+                    OrderType = "Pickup", DeliveryLocation = "The Barn at Hickory Hill",
+                    InitialContact = "Phone",
+                    TotalCost = 520.00, DepositAmount = 130.00, DepositPaymentMethod = "Venmo", DepositDateTime = today.AddDays(-90),
+                    DateOrderPlaced = today.AddDays(-91), ContractSent = true,
+                    Cakes = [
+                        new Cake { TierSize = "6\"", NumTierLayers = 2, CakeShape = "Round", CakeFlavor = "Lemon", FillingFlavor = "Lemon Curd", IcingFlavor = "White Chocolate", SplitTier = false },
+                        new Cake { TierSize = "8\"", NumTierLayers = 2, CakeShape = "Round", CakeFlavor = "Vanilla", Flavor2 = "Red Velvet", FillingFlavor = "Cream Cheese", IcingFlavor = "White Chocolate", SplitTier = true },
+                        new Cake { TierSize = "Quarter Sheet", NumTierLayers = 1, CakeShape = "Square", CakeFlavor = "Vanilla", FillingFlavor = "None", IcingFlavor = "Vanilla Buttercream", SplitTier = false }
+                    ],
+                    Cupcakes = [
+                        new Cupcake { CupcakeSize = "Regular", CupcakeQuantity = 24, CupcakeFlavor = "Red Velvet", FillingFlavor = "None", IcingFlavor = "Cream Cheese" }
+                    ],
+                    WeddingDetails = new WeddingDetails
+                    {
+                        EventDate = w2Sat,
+                        CeremonySameLocation = false, CeremonyTime = "14:00", ReceptionTime = "16:30",
+                        Partner2Name = "Marcus Reed", Partner2Phone = "555-410-3303",
+                        MainCakeDesignDescription = "Semi-naked with buttercream peonies",
+                        CupcakeDesignDescription = "White swirl, gold sprinkles",
+                        DayOfContactTitle = "Maid of Honor",
+                        CakeBoardColor = "White", CakeTopper = false, HasFlowers = true,
+                        FlowerType = "Buttercream", FlowersProvidedBy = "CCC",
+                        PickupPersonName = "Marcus Reed", PickupPersonPhone = "555-410-3303",
+                        TotalServings = 120
+                    }
+                },
+
+                // w3 — upcoming wedding delivery, 4 tiers + half sheet + cupcakes
+                new Order
+                {
+                    Title = "Lauren & Ethan - Wedding",
+                    IsWedding = true,
+                    OrderDateTime = w3Sat.AddHours(10),
+                    CustName = "Lauren Hayes", CustPhone = "555-410-4403", CustEmail = "lauren.h@email.com",
+                    SecondaryName = "Brooke Adams", SecondaryPhone = "555-410-4499",
+                    Details = "Cake A - top\nCake B\nCake C\nCake D - base",
+                    OrderType = "Delivery", DeliveryLocation = "Hilton Garden Inn Southpointe, 1000 Corporate Dr, Canonsburg PA",
+                    InitialContact = "Instagram",
+                    TotalCost = 980.00, DepositAmount = 245.00, DepositPaymentMethod = "Zelle", DepositDateTime = today.AddDays(-150),
+                    DateOrderPlaced = today.AddDays(-151), ContractSent = true,
+                    Cakes = [
+                        new Cake { TierSize = "6\"",  NumTierLayers = 3, CakeShape = "Round", CakeFlavor = "White",      FillingFlavor = "Raspberry",         IcingFlavor = "Vanilla Buttercream", SplitTier = false },
+                        new Cake { TierSize = "8\"",  NumTierLayers = 3, CakeShape = "Round", CakeFlavor = "Strawberry", FillingFlavor = "Vanilla",           IcingFlavor = "Vanilla Buttercream", SplitTier = false },
+                        new Cake { TierSize = "10\"", NumTierLayers = 3, CakeShape = "Round", CakeFlavor = "Chocolate",  FillingFlavor = "Chocolate Ganache", IcingFlavor = "Vanilla Buttercream", SplitTier = false },
+                        new Cake { TierSize = "12\"", NumTierLayers = 3, CakeShape = "Round", CakeFlavor = "Vanilla",    FillingFlavor = "Strawberry",        IcingFlavor = "Vanilla Buttercream", SplitTier = false },
+                        new Cake { TierSize = "Half Sheet", NumTierLayers = 1, CakeShape = "Square", CakeFlavor = "Chocolate", FillingFlavor = "None", IcingFlavor = "Chocolate Buttercream", SplitTier = false }
+                    ],
+                    Cupcakes = [
+                        new Cupcake { CupcakeSize = "Regular", CupcakeQuantity = 36, CupcakeFlavor = "Champagne", FillingFlavor = "Strawberry", IcingFlavor = "Blush Buttercream" },
+                        new Cupcake { CupcakeSize = "Regular", CupcakeQuantity = 24, CupcakeFlavor = "Chocolate", FillingFlavor = "None",       IcingFlavor = "Vanilla Buttercream" }
+                    ],
+                    WeddingDetails = new WeddingDetails
+                    {
+                        EventDate = w3Sat,
+                        CeremonySameLocation = true, CeremonyTime = "16:00", ReceptionTime = "17:30",
+                        Partner2Name = "Ethan Brooks", Partner2Phone = "555-410-4404",
+                        MainCakeDesignDescription = "Textured white buttercream, silver drip on top tier, customer silk flowers cascading",
+                        CupcakeDesignDescription = "Blush and white rosettes",
+                        DayOfContactTitle = "Wedding Planner",
+                        VenueContactName = "Maria Lopez", VenueContactPhone = "555-410-4490",
+                        CakeBoardColor = "Silver", CakeTopper = true, HasFlowers = true,
+                        FlowerType = "Fake", FlowersProvidedBy = "Customer",
+                        DeliveryWindowEnd = "12:00",
+                        TotalServings = 270
+                    }
+                },
+
+                // Incomplete wedding — wedding details only partly known (no partner 2, return-by date, or servings)
+                new Order
+                {
+                    Title = "Ava - Wedding Inquiry",
+                    IsWedding = true,
+                    OrderDateTime = w3Fri.AddHours(12),
+                    CustName = "Ava Collins", CustPhone = "555-410-5504", CustEmail = "ava.c@email.com",
+                    Details = "Booked the date, finalizing tiers at tasting",
+                    OrderType = "Delivery", DeliveryLocation = "Canonsburg Town Park Pavilion",
+                    InitialContact = "Walk-in",
+                    TotalCost = 400.00, DepositAmount = 100.00, DepositPaymentMethod = "Cash", DepositDateTime = today.AddDays(-5),
+                    DateOrderPlaced = today.AddDays(-5),
+                    Cakes = [
+                        new Cake { TierSize = "8\"", NumTierLayers = 2, CakeShape = "Round", CakeFlavor = "Vanilla", FillingFlavor = "None", IcingFlavor = "Buttercream", SplitTier = false }
+                    ],
+                    WeddingDetails = new WeddingDetails
+                    {
+                        EventDate = w3Sat,
+                        ReceptionTime = "18:00",
+                        DeliveryWindowEnd = "14:00"
+                        // Missing Partner2Name/Phone and TotalServings → incomplete
+                    }
                 },
 
                 // ══════════════════════════════════════════════════════════════

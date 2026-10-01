@@ -211,6 +211,23 @@ namespace CCCInventory.Migrations
                     b.ToTable("Customers");
                 });
 
+            modelBuilder.Entity("CCCInventory.GoogleToken", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Key");
+
+                    b.ToTable("GoogleTokens");
+                });
+
             modelBuilder.Entity("CCCInventory.OptionItem", b =>
                 {
                     b.Property<int>("Id")
@@ -306,6 +323,9 @@ namespace CCCInventory.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("IsReadyForPickup")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsWedding")
                         .HasColumnType("INTEGER");
 
                     b.Property<double?>("Labor")
@@ -471,6 +491,110 @@ namespace CCCInventory.Migrations
                     b.ToTable("StaffMembers");
                 });
 
+            modelBuilder.Entity("CCCInventory.WeddingDetails", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CakeBoardColor")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("CakePhotoAttachmentId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("CakeTopper")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("CeremonySameLocation")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CeremonyTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ContractDocId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ContractDocName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ContractDocUrl")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ContractGeneratedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CupcakeDesignDescription")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("CupcakePhotoAttachmentId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("DayOfContactTitle")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeliveryWindowEnd")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("EventDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FloristDeliveryTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FloristName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FloristPhone")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FlowerType")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FlowersProvidedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("HasFlowers")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("MainCakeDesignDescription")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("OrderNumber")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Partner2Name")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Partner2Phone")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PickupPersonName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PickupPersonPhone")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReceptionTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("TotalServings")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("VenueContactName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("VenueContactPhone")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderNumber")
+                        .IsUnique();
+
+                    b.ToTable("WeddingDetails");
+                });
+
             modelBuilder.Entity("CCCInventory.AuditLog", b =>
                 {
                     b.HasOne("CCCInventory.StaffMember", "StaffMember")
@@ -524,6 +648,17 @@ namespace CCCInventory.Migrations
                         .HasForeignKey("OrderNumber");
                 });
 
+            modelBuilder.Entity("CCCInventory.WeddingDetails", b =>
+                {
+                    b.HasOne("CCCInventory.Order", "Order")
+                        .WithOne("WeddingDetails")
+                        .HasForeignKey("CCCInventory.WeddingDetails", "OrderNumber")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+                });
+
             modelBuilder.Entity("CCCInventory.Customer", b =>
                 {
                     b.Navigation("Orders");
@@ -540,6 +675,8 @@ namespace CCCInventory.Migrations
                     b.Navigation("OtherItems");
 
                     b.Navigation("Pupcakes");
+
+                    b.Navigation("WeddingDetails");
                 });
 #pragma warning restore 612, 618
         }

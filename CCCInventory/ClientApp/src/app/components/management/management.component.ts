@@ -7,6 +7,8 @@ import { OptionService } from '../../services/option.service';
 import { SignatureCupcakeService } from '../../services/signature-cupcake.service';
 import { StaffMember, StaffService } from '../../services/staff.service';
 import { AuthService } from '../../services/auth.service';
+import { ActivatedRoute, Router } from '@angular/router';
+import { GoogleService, GoogleStatus, TemplateCheck } from '../../services/google.service';
 
 interface CategorySection {
   key: string;
@@ -70,13 +72,83 @@ export class ManagementComponent implements OnInit {
     private optionService: OptionService,
     private sigService: SignatureCupcakeService,
     private staffService: StaffService,
-    private authService: AuthService
+    private authService: AuthService,
+    private googleService: GoogleService,
+    private route: ActivatedRoute,
+    private router: Router
   ) { }
 
   ngOnInit() {
     this.loadOptions();
     this.loadSignatures();
     this.loadStaff();
+    this.loadGoogleStatus();
+
+    // Returning from the Google consent screen
+    const result = this.route.snapshot.queryParamMap.get('google');
+    if (result) {
+      this.googleExpanded = true;
+      if (result === 'connected') {
+        this.googleMsg = 'Google account connected.';
+        this.googleMsgIsError = false;
+      } else {
+        this.googleMsg = `Google connection failed (${this.route.snapshot.queryParamMap.get('reason') ?? 'unknown error'}).`;
+        this.googleMsgIsError = true;
+      }
+      this.router.navigate([], { queryParams: {}, replaceUrl: true });
+    }
+  }
+
+  // ─── Google Integration ──────────────────────────────────────────────────
+
+  googleExpanded = false;
+  googleStatus: GoogleStatus | null = null;
+  googleMsg = '';
+  googleMsgIsError = false;
+  templateCheck: TemplateCheck | null = null;
+  checkingTemplate = false;
+
+  loadGoogleStatus() {
+    this.googleService.GetStatus().subscribe({
+      next: s => this.googleStatus = s,
+      error: () => this.googleStatus = null
+    });
+  }
+
+  connectGoogle() {
+    this.googleService.GetAuthorizeUrl().subscribe({
+      next: r => window.location.href = r.url,
+      error: err => {
+        this.googleMsg = err.error?.message ?? 'Could not start the Google connection.';
+        this.googleMsgIsError = true;
+      }
+    });
+  }
+
+  disconnectGoogle() {
+    if (!confirm('Disconnect Google? Contracts cannot be generated until it is connected again.')) return;
+    this.googleService.Disconnect().subscribe(() => {
+      this.templateCheck = null;
+      this.googleMsg = 'Google account disconnected.';
+      this.googleMsgIsError = false;
+      this.loadGoogleStatus();
+    });
+  }
+
+  checkTemplate() {
+    this.checkingTemplate = true;
+    this.templateCheck = null;
+    this.googleService.CheckTemplate().subscribe({
+      next: r => {
+        this.checkingTemplate = false;
+        this.templateCheck = r;
+      },
+      error: err => {
+        this.checkingTemplate = false;
+        this.googleMsg = err.error?.message ?? 'Template check failed.';
+        this.googleMsgIsError = true;
+      }
+    });
   }
 
   // ─── Options ─────────────────────────────────────────────────────────────

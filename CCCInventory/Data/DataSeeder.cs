@@ -12,7 +12,8 @@ namespace CCCInventory
             var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
 
             context.Database.Migrate();
-            SeedData.Initialize(context);
+            var env = scope.ServiceProvider.GetRequiredService<IWebHostEnvironment>();
+            SeedData.Initialize(context, Controllers.AttachmentController.AttachmentsRoot(env));
             await SeedAuthAsync(context, config);
         }
 

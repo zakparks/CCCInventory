@@ -66,7 +66,16 @@ namespace CCCInventory.Controllers
                                                 c.CupcakeFlavor == null || c.CupcakeFlavor == "" ||
                                                 c.IcingFlavor == null || c.IcingFlavor == "") ||
                                             o.Pupcakes!.Any(p => p.PupcakeQuantity == 0) ||
-                                            o.Cookies!.Any(c => c.CookieQuantity == 0)
+                                            o.Cookies!.Any(c => c.CookieQuantity == 0) ||
+                                            (o.IsWedding && (
+                                                o.WeddingDetails == null ||
+                                                o.WeddingDetails.EventDate == null ||
+                                                o.WeddingDetails.Partner2Name == null || o.WeddingDetails.Partner2Name == "" ||
+                                                o.WeddingDetails.Partner2Phone == null || o.WeddingDetails.Partner2Phone == "" ||
+                                                o.WeddingDetails.TotalServings == null ||
+                                                string.IsNullOrEmpty(o.CustEmail) ||
+                                                string.IsNullOrEmpty(o.DeliveryLocation)
+                                            ))
                                         )),
                 _               => query.Where(o => !o.CancelledFlag && o.OrderDateTime > now)
             };
@@ -83,6 +92,7 @@ namespace CCCInventory.Controllers
                 .Include(o => o.Cookies)
                 .Include(o => o.Pupcakes)
                 .Include(o => o.OtherItems)
+                .Include(o => o.WeddingDetails)
                 .FirstOrDefaultAsync(o => o.OrderNumber == orderNumber);
 
             if (order == null)
@@ -147,6 +157,12 @@ namespace CCCInventory.Controllers
 
             await LinkOrCreateCustomerAsync(order);
 
+            if (order.WeddingDetails != null)
+            {
+                order.WeddingDetails.Id = 0;
+                ClearServerManagedWeddingFields(order.WeddingDetails);
+            }
+
             _context.Orders.Add(order);
             await _context.SaveChangesAsync(); // EF assigns OrderNumber here
 
@@ -165,6 +181,7 @@ namespace CCCInventory.Controllers
             await LinkOrCreateCustomerAsync(order);
 
             var dbOrder = await _context.Orders
+                .Include(o => o.WeddingDetails)
                 .FirstOrDefaultAsync(o => o.OrderNumber == order.OrderNumber);
 
             if (dbOrder == null)
@@ -173,9 +190,29 @@ namespace CCCInventory.Controllers
             using var transaction = await _context.Database.BeginTransactionAsync();
 
             foreach (PropertyInfo property in typeof(Order).GetProperties()
-                .Where(p => p.CanWrite && !IsNavigationCollection(p)))
+                .Where(p => p.CanWrite && !IsNavigationCollection(p) && p.Name != nameof(Order.WeddingDetails)))
             {
                 property.SetValue(dbOrder, property.GetValue(order, null), null);
+            }
+
+            // Wedding details: upsert. A null payload (wedding toggle off) leaves any saved details intact.
+            if (order.WeddingDetails != null)
+            {
+                if (dbOrder.WeddingDetails == null)
+                {
+                    order.WeddingDetails.Id = 0;
+                    order.WeddingDetails.OrderNumber = dbOrder.OrderNumber;
+                    ClearServerManagedWeddingFields(order.WeddingDetails);
+                    dbOrder.WeddingDetails = order.WeddingDetails;
+                }
+                else
+                {
+                    foreach (PropertyInfo property in typeof(WeddingDetails).GetProperties()
+                        .Where(p => p.CanWrite && !WeddingDetailsSkipOnUpdate.Contains(p.Name)))
+                    {
+                        property.SetValue(dbOrder.WeddingDetails, property.GetValue(order.WeddingDetails, null), null);
+                    }
+                }
             }
 
             int oNum = order.OrderNumber;
@@ -239,6 +276,27 @@ namespace CCCInventory.Controllers
             await _context.SaveChangesAsync();
 
             return Ok(orderNumber);
+        }
+
+        // Identity/navigation plus the generated-contract fields, which only WeddingContractController
+        // writes. Skipping them keeps a stale autosave from wiping a contract link that was just generated.
+        private static readonly HashSet<string> WeddingDetailsSkipOnUpdate =
+        [
+            nameof(WeddingDetails.Id),
+            nameof(WeddingDetails.OrderNumber),
+            nameof(WeddingDetails.Order),
+            nameof(WeddingDetails.ContractDocId),
+            nameof(WeddingDetails.ContractDocUrl),
+            nameof(WeddingDetails.ContractDocName),
+            nameof(WeddingDetails.ContractGeneratedAt)
+        ];
+
+        private static void ClearServerManagedWeddingFields(WeddingDetails details)
+        {
+            details.ContractDocId = null;
+            details.ContractDocUrl = null;
+            details.ContractDocName = null;
+            details.ContractGeneratedAt = null;
         }
 
         private static bool IsNavigationCollection(PropertyInfo p) =>

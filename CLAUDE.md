@@ -16,17 +16,18 @@
 - File attachments stored at `./attachments/{orderNumber}/` relative to the app working directory
 - API base URL comes from Angular environment files (`environment.ts` / `environment.prod.ts`)
 - Terminology: orders are **Archived** (soft-cancel with required reason), never Deleted. Backend flag is `CancelledFlag`.
+- Wedding-only fields live in `WeddingDetails` (1:1 with `Order`, keyed by `OrderNumber`); everything shared (dates, customer, items, pricing) stays on `Order`. `Order.IsWedding` is the flag. `OrderController.UpdateOrder` never overwrites the server-managed `Contract*` fields.
 
 ## Seed Data
 
-`CCCInventory/Data/SeedData.cs` must be kept in sync with the current data model. After any phase that adds fields to `Order`, `Cake`, `Cupcake`, `Cookie`, `Pupcake`, or `OtherItem`, update `SeedData.cs` to:
+`CCCInventory/Data/SeedData.cs` must be kept in sync with the current data model. After any phase that adds fields to `Order`, `WeddingDetails`, `Cake`, `Cupcake`, `Cookie`, `Pupcake`, or `OtherItem`, update `SeedData.cs` to:
 - Populate every new field on all existing seed orders (no blank/default values that mask functionality)
 - Include at least one order that exercises the new field
 - Keep orders distributed across **three weeks**: one week prior (archived), current week (mixed active/archived), one week ahead (active), so all five status filters (Active, Incomplete, Ready for Pickup, Cancelled, Archived) are always exercised from a fresh seed
 
 ---
 
-## Current State (as of 2026-04-11)
+## Current State (as of 2026-10-01)
 
 ### Completed Phases
 
@@ -43,6 +44,8 @@
 | 7 | Bake sheet redesign — per-layer rows, cakes+cupcakes combined, Thu–Wed bake week, day-of-week color highlights (Mon=red…Sat=purple), order # pastel color coding, Micro/Quarter Sheet special display rules, Other items at bottom, print layout with gridlines |
 | 8 | Authentication — ASP.NET Core Identity + JWT HttpOnly cookie; 4-digit PIN per staff member; inactivity timeout → PIN screen; staff management in Management page; AuditLog table |
 | pre-9 | Pre-phase fixes — attachment carousel modal (click image thumbnail → full-size modal w/ prev/next); CookieSize already present in management categories |
+| Wedding | Wedding Orders — "Wedding Order" toggle on the order form; `WeddingDetails` entity (1:1 with Order) for contract-only fields (event date, ceremony/reception times, Bride/Groom #2, day-of title, venue/pickup contacts, board color, topper, flowers/florist, delivery window end, total servings); reception location = `DeliveryLocation`, contract return-by = delivery date − 10 days; Cake/Cupcake Design boxes (wedding only) under the item sections feed the contract's design descriptions; wedding-mode labels (Bride/Groom, Reception Location / Delivery Address, Delivery Start/End beside the date); day-of contact name/phone shown only in Wedding Details; (?) tooltip explaining Event Date vs Delivery/Pickup Date; staff-filled contract blanks are required (red + Incomplete, still saveable); ring icon with "Wedding Order" tooltip on All Orders, Bake Sheet, customer history, order form; **Generate Contract** copies the Google Doc template into Drive and fills `{{tokens}}` (Overwrite → trash old / New Revision → `YYYY/MM/DD - REVISED - …`); answered questions lose their client box, chosen options get ✔ on the left and the other options are removed; delivery/pickup/florist/kitchen/cupcake sections and "(Choose ONE…)" prompts are removed when they don't apply (`{{if:x}}…{{endif:x}}`); cake and cupcake inspiration photos (one image attachment each, picked under the Design boxes; `CakePhotoAttachmentId` / `CupcakePhotoAttachmentId`) are inserted via a temporary public Drive copy that is deleted right after; Management → Google Integration (connect account, template token check). Setup + token reference: `docs/wedding-contract-template.md` |
+| Form UX | Order form: Order # + Title on one row; Order Information laid out row-by-row so Tab goes name → phone → email → initial contact → date → time → location (Details, radios, toggles skip Tab); `app-time-input` (type any time — "3", "330p", "15:30", "noon" — or pick hour / 15-min / AM-PM; bare 1–6 = PM, 7–11 = AM); Pickup/Delivery labels for every order; new cake tier copies the previous tier except size; Signature Cupcakes button blue |
 | 14 | Customer Profiles — `Customer` entity (FirstName, LastName, Email, Phone); `CustomerId` FK on Order (nullable, SetNull on delete); `CustomerController` (list, detail, search, CRUD, merge); customer link/create logic on order save (email as unique key); autocomplete dropdown on `custName` field in order form; `/customers` list page; `/customers/:id` detail/edit page with order history; "New Order" from customer pre-fills contact fields; seed customers linked to seed orders; customer merge (re-points all orders to kept record, deletes duplicate) |
 
 ### Known Gaps in Completed Phases
@@ -89,6 +92,15 @@ Public internet ──HTTPS──► Cloudflare edge ──► orders.canonsburg
 
 **⚠ Phase 8 (auth) must be complete before the public URL goes live.**
 
+**Pre-release TODOs:**
+- **Pricing** — incorporate the shop's pricing matrix into the app logic for all orders (see Phase 13; get the matrix from the bakery).
+
+**Wedding contract / Google OAuth checks at deployment** (see `docs/wedding-contract-template.md`):
+- OAuth consent screen **Publishing status must be "In production"**, not "Testing" — in Testing, Google expires the refresh token after 7 days and contract generation silently stops (users see an "unverified app" warning on connect; that's expected).
+- Add `https://orders.canonsburgcakecompany.com/api/google/callback` as an Authorized redirect URI; set `Google__ClientId` / `Google__ClientSecret` env vars; the callback URL is built from the browser's address, so `Google:RedirectUri` normally stays blank.
+- Point `Google:WeddingContractTemplateId` at the **production** template (tokens added), not `9999 - Zak's Development Template - Wedding contract`.
+- Reconnect Google on Management as the bakery account and run **Check Contract Template**.
+
 **One-time setup checklist:**
 1. Purchase bakery PC; install Windows + SQL Server Express
 2. Install Tailscale on both home PC and bakery PC
@@ -97,6 +109,10 @@ Public internet ──HTTPS──► Cloudflare edge ──► orders.canonsburg
 5. Register self-hosted GitHub Actions runner on bakery PC
 6. Publish .NET app as self-contained `win-x64` Windows Service; install with `sc.exe`
 7. Configure Google OAuth redirect URI once domain is live (prerequisite for Phase 10)
+
+### Wedding contract follow-ups *(open)*
+
+- **Inspiration photos — verify on the bakery account**: first real Generate Contract with a photo confirms the bakery Google account allows "Anyone with the link" sharing (needed briefly for each photo). If a Workspace policy blocks it, fall back to a short-lived signed URL served by the app once it is public (Phase 9).
 
 ### Phase 10 — Google Calendar Integration *(post-launch)*
 
@@ -109,7 +125,7 @@ Public internet ──HTTPS──► Cloudflare edge ──► orders.canonsburg
 - Color key: Blue=cakes, Purple=cupcakes/cookies/pupcakes (mixed non-cake orders use Purple), Green=ready for pickup, Red=cancelled/archived, Yellow=delivery. Cakes take color priority over all others.
 - Timing: orders stack from midnight on their due date in creation order, 30 min each. Party Rentals appear at actual scheduled start time.
 
-**Implementation:** Add `GoogleCalendarEventId` to `Order` + migration; `GoogleCalendarService` (token storage, create/update/delete); `GoogleCalendarController` (`/authorize`, `/callback`, `/status`, `/disconnect`); hook into `OrderController` on every create/update/archive.
+**Implementation:** Add `GoogleCalendarEventId` to `Order` + migration; `GoogleCalendarService` (create/update/delete). Reuse the existing Google OAuth from the wedding-contract feature (`GoogleAuthService`, `GoogleController` `/authorize-url`, `/callback`, `/status`, `/disconnect`, token in `GoogleTokens`) — add the Calendar scope to `GoogleAuthService.Scopes` (users must reconnect once); hook into `OrderController` on every create/update/archive.
 
 **Removes `/calendar` route and `CalendarComponent` once live.** Until then the built-in calendar remains as temporary infrastructure.
 

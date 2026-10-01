@@ -5,11 +5,12 @@ import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } 
 import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { CustomerService } from '../../services/customer.service';
 import { Customer, CustomerSearchResult } from '../../models/customer';
+import { WeddingIconComponent } from '../shared/wedding-icon/wedding-icon.component';
 
 @Component({
   selector: 'app-customer-detail',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, WeddingIconComponent],
   templateUrl: './customer-detail.component.html'
 })
 export class CustomerDetailComponent implements OnInit {

@@ -67,6 +67,9 @@ builder.Services.AddRateLimiter(options =>
 
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<AuditService>();
+builder.Services.AddScoped<GoogleAuthService>();
+builder.Services.AddScoped<WeddingContractService>();
+builder.Services.AddMemoryCache();
 
 builder.Services.AddCors(options => options.AddPolicy(name: "OrderOrigins",
     policy =>

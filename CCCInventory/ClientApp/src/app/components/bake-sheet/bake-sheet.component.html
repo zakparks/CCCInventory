@@ -34,7 +34,7 @@
       <tbody>
         @for (row of bakeRows; track $index) {
           <tr>
-            <td [style.background-color]="orderColorMap.get(row.orderNumber)">{{ row.orderNumber }}</td>
+            <td [style.background-color]="orderColorMap.get(row.orderNumber)">{{ row.orderNumber }} @if (weddingOrders.has(row.orderNumber)) { <app-wedding-icon /> }</td>
             <td>{{ row.sizeOrQty }}</td>
             <td>{{ row.flavor }}</td>
             <td [style.background-color]="dayColor(row.dayOfWeek)">{{ row.dayOfWeek }}</td>
@@ -63,7 +63,7 @@
       <tbody>
         @for (row of cookieRows; track $index) {
           <tr>
-            <td>{{ row.orderNumber }}</td>
+            <td>{{ row.orderNumber }} @if (weddingOrders.has(row.orderNumber)) { <app-wedding-icon /> }</td>
             <td>{{ row.sizeOrQty }}</td>
             <td>{{ row.flavor }}</td>
             <td [style.background-color]="dayColor(row.dayOfWeek)">{{ row.dayOfWeek }}</td>
@@ -90,7 +90,7 @@
       <tbody>
         @for (row of pupcakeRows; track $index) {
           <tr>
-            <td>{{ row.orderNumber }}</td>
+            <td>{{ row.orderNumber }} @if (weddingOrders.has(row.orderNumber)) { <app-wedding-icon /> }</td>
             <td>{{ row.sizeOrQty }}</td>
             <td>{{ row.flavor }}</td>
             <td [style.background-color]="dayColor(row.dayOfWeek)">{{ row.dayOfWeek }}</td>
@@ -117,7 +117,7 @@
       <tbody>
         @for (row of otherRows; track $index) {
           <tr>
-            <td>{{ row.orderNumber }}</td>
+            <td>{{ row.orderNumber }} @if (weddingOrders.has(row.orderNumber)) { <app-wedding-icon /> }</td>
             <td>{{ row.sizeOrQty }}</td>
             <td>{{ row.flavor }}</td>
             <td [style.background-color]="dayColor(row.dayOfWeek)">{{ row.dayOfWeek }}</td>
