@@ -53,6 +53,10 @@ sorts to the bottom and is clearly not for staff use), point `Google:WeddingCont
 and add tokens to the copy. When going live, add the same tokens to the production template (or
 promote the dev copy) and switch the ID.
 
+The dev copy exists ([9999 - Zak's Development Template - Wedding contract](https://docs.google.com/document/d/1Idvu4Sh-i23018TFUaFIpJT8MhAi5_m8uc_suS7eEUc/edit))
+with every token below already placed, and its ID is set in `appsettings.Development.json`. A filled
+example made from seed order 35 is next to it ("9999 - Zak's Development SAMPLE - …").
+
 Type tokens directly into the document text in place of the `______` blanks. Token names are
 case-insensitive, and spaces inside the braces are fine (`{{ event_date }}`). Unknown tokens are left
 as-is and reported after generation, and by the template check.
