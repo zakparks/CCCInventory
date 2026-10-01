@@ -27,6 +27,10 @@ namespace CCCInventory.Services
     //   {{mark:board_color=Gold}}        put at the start of an option line. When board_color has a value,
     //                                    the matching line gets "✔ " and loses its client box, and the
     //                                    other option lines are removed; with no value all lines stay.
+    //   {{if:pickup}} … {{endif:pickup}}  conditional section: everything from the paragraph holding
+    //                                    {{if:x}} through the paragraph holding {{endif:x}} is deleted when
+    //                                    x doesn't apply; otherwise just the markers are removed (see
+    //                                    Conditions for the names).
     // A scalar token directly before a client (eSignature) box, e.g. "{{ceremony_time}} [box]", removes
     // the box when it has a value, so the contract never shows both data and a box to fill.
     // Token names are case-insensitive and may contain spaces inside the braces.
@@ -157,7 +161,57 @@ namespace CCCInventory.Services
 
         private static bool IsKnownToken(string token, List<string> known) =>
             known.Contains(token) ||
-            (token.StartsWith("mark:") && token.Contains('=') && known.Contains(token[5..token.IndexOf('=')].Trim()));
+            (token.StartsWith("mark:") && token.Contains('=') && known.Contains(token[5..token.IndexOf('=')].Trim())) ||
+            (ConditionName(token) is { } name && ConditionNames.Contains(name));
+
+        // ── Conditional sections ──────────────────────────────────────────────
+
+        public static readonly string[] ConditionNames = ["delivery", "pickup", "florist", "flowers", "kitchen_cakes", "cupcakes"];
+
+        // "if:pickup" / "endif:pickup" → "pickup"; anything else → null
+        private static string? ConditionName(string token) =>
+            token.StartsWith("if:") ? token[3..].Trim() : token.StartsWith("endif:") ? token[6..].Trim() : null;
+
+        // Which conditional sections apply. With no order type chosen, both delivery and pickup stay.
+        public static Dictionary<string, bool> Conditions(Dictionary<string, string> values, Dictionary<string, string> rawValues) => new()
+        {
+            ["delivery"] = values.GetValueOrDefault("delivering") != "No",
+            ["pickup"] = values.GetValueOrDefault("delivering") != "Yes",
+            ["florist"] = rawValues.GetValueOrDefault("flowers_provided_by") is "Florist" or "" or null,
+            ["flowers"] = values.GetValueOrDefault("flowers") != "No",
+            ["kitchen_cakes"] = values.GetValueOrDefault("kitchen_cakes") != "No",
+            ["cupcakes"] = values.GetValueOrDefault("cupcake_servings_total") != "",
+        };
+
+        // Body ranges to delete for conditional sections that don't apply. A section runs from the start
+        // of the paragraph holding {{if:x}} to the end of the next paragraph holding {{endif:x}}.
+        public static List<(int Start, int End)> FindRemovedSections(Document doc, Dictionary<string, bool> conditions)
+        {
+            var removed = new List<(int Start, int End)>();
+            var body = doc.Body?.Content ?? [];
+            var open = new Dictionary<string, int>();   // condition → start index of its {{if}} paragraph
+            for (int e = 0; e < body.Count; e++)
+            {
+                if (body[e].Paragraph == null || body[e].StartIndex == null || body[e].EndIndex == null) continue;
+                foreach (Match m in TokenRegex.Matches(ElementsText([body[e]])))
+                {
+                    var token = Normalize(m.Groups[1].Value);
+                    var name = ConditionName(token);
+                    if (name == null || !conditions.ContainsKey(name)) continue;
+                    if (token.StartsWith("if:"))
+                    {
+                        open.TryAdd(name, body[e].StartIndex!.Value);
+                    }
+                    else if (open.Remove(name, out var start) && !conditions[name])
+                    {
+                        // The body's last paragraph, and one right before a table, must keep its newline
+                        bool keepNewline = e == body.Count - 1 || body[e + 1].Table != null;
+                        removed.Add((start, body[e].EndIndex!.Value - (keepNewline ? 1 : 0)));
+                    }
+                }
+            }
+            return removed;
+        }
 
         // ── Values ────────────────────────────────────────────────────────────
 
@@ -446,13 +500,22 @@ namespace CCCInventory.Services
                 }
             }
 
-            // Index-based edits, highest position first: the new table-row text, plus removing client
-            // boxes and unchosen option lines (see BuildFieldDeletes). They never overlap: the row text
-            // is inside tables and the deletes are in body paragraphs.
+            // Index-based edits, highest position first: the new table-row text, removing client boxes
+            // and unchosen option lines (see BuildFieldDeletes), and removing conditional sections that
+            // don't apply. Edits inside a removed section are dropped; the rest never overlap (row text is
+            // inside tables, the other deletes are whole or partial body paragraphs).
+            var sections = FindRemovedSections(doc, Conditions(values, rawValues));
+            bool InRemovedSection(int index) => sections.Any(r => index >= r.Start && index < r.End);
+            DeleteContentRangeRequest Delete(int start, int end) =>
+                new() { Range = new Google.Apis.Docs.v1.Data.Range { StartIndex = start, EndIndex = end } };
+
             var requests = inserts
+                .Where(i => !InRemovedSection(i.Index))
                 .Select(i => (Index: i.Index, Request: new Request { InsertText = new InsertTextRequest { Location = new Location { Index = i.Index }, Text = i.Text } }))
-                .Concat(BuildFieldDeletes(doc, values, rawValues, rows).Select(d => (Index: d.Start,
-                    Request: new Request { DeleteContentRange = new DeleteContentRangeRequest { Range = new Google.Apis.Docs.v1.Data.Range { StartIndex = d.Start, EndIndex = d.End } } })))
+                .Concat(BuildFieldDeletes(doc, values, rawValues, rows)
+                    .Where(d => !InRemovedSection(d.Start))
+                    .Select(d => (Index: d.Start, Request: new Request { DeleteContentRange = Delete(d.Start, d.End) })))
+                .Concat(sections.Select(r => (Index: r.Start, Request: new Request { DeleteContentRange = Delete(r.Start, r.End) })))
                 .OrderByDescending(x => x.Index)
                 .Select(x => x.Request)
                 .ToList();
@@ -567,6 +630,10 @@ namespace CCCInventory.Services
             Dictionary<string, string> rawValues,
             Dictionary<string, List<Dictionary<string, string>>> rows)
         {
+            // Section markers that survive (their section applies) are simply removed
+            if (ConditionName(token) is { } condition)
+                return ConditionNames.Contains(condition) ? "" : null;
+
             if (token.StartsWith("mark:"))
             {
                 var parts = token[5..].Split('=', 2);

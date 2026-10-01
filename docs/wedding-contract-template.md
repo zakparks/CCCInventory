@@ -142,6 +142,23 @@ line becomes `✔ White` (its client box removed) and the other option lines are
 line stays as-is for the client. Values match either the stored option (`Live`, `Fake`, `Buttercream`,
 `Florist`, `Customer`, `CCC`, `N/A`) or the displayed text. "Flowers: No" answers both flower lists as N/A.
 
+### Conditional sections (`{{if:…}}` / `{{endif:…}}`)
+
+Wrap a part of the template in `{{if:<name>}}` … `{{endif:<name>}}`. When the condition doesn't apply to the
+order, everything from the paragraph holding `{{if:…}}` through the paragraph holding `{{endif:…}}` is deleted;
+when it does, only the two markers are removed. Put the markers inline (e.g. at the start of the section
+heading and at the end of its "Initial:" line), or put `{{if:…}}` on the blank line above a section so the
+separator goes with it.
+
+| Name | Applies when |
+|---|---|
+| `delivery` | Order type is Delivery (or not chosen yet) |
+| `pickup` | Order type is Pickup (or not chosen yet) |
+| `florist` | Flowers provided by the customer's florist (or not answered yet) |
+| `flowers` | Flowers/greenery is Yes (or not answered yet) |
+| `kitchen_cakes` | The order has sheet (kitchen) cakes |
+| `cupcakes` | The order has cupcakes |
+
 ### Client boxes next to tokens
 
 A token placed directly before a client (eSignature) box, `{{ceremony_time}} [box]`, removes the box when the
