@@ -633,18 +633,15 @@ namespace CCCInventory.Data
                     ],
                     WeddingDetails = new WeddingDetails
                     {
-                        EventDate = w1Sat, ReceptionLocation = "Southpointe Golf Club",
+                        EventDate = w1Sat,
                         CeremonySameLocation = true, CeremonyTime = "15:00", ReceptionTime = "17:00",
                         Partner2Name = "Daniel Ortiz", Partner2Phone = "555-410-2202",
                         DayOfContactTitle = "Mother of the Bride",
                         VenueContactName = "Dana Price", VenueContactPhone = "555-410-2290",
-                        ContractReturnByDate = today.AddDays(-100),
                         CakeBoardColor = "Gold", CakeTopper = true, HasFlowers = true,
                         FlowerType = "Live", FlowersProvidedBy = "Florist",
                         FloristName = "Petal & Stem", FloristPhone = "555-410-2280", FloristDeliveryTime = "09:30",
                         DeliveryWindowEnd = "13:00",
-                        MainCakeFlavorDescription = "Champagne/strawberry top, vanilla/raspberry middle, chocolate/mousse base",
-                        MainCakeDesignDescription = "Smooth ivory buttercream, gold leaf accents, florist-supplied garden roses",
                         TotalServings = 74
                     }
                 },
@@ -658,7 +655,7 @@ namespace CCCInventory.Data
                     CustName = "Chloe Bennett", CustPhone = "555-410-3302", CustEmail = "chloe.b@email.com",
                     SecondaryName = "Jenna Lowe", SecondaryPhone = "555-410-3399",
                     Details = "Cake A - top\nCake B - base\nKitchen sheet stays boxed",
-                    OrderType = "Pickup",
+                    OrderType = "Pickup", DeliveryLocation = "The Barn at Hickory Hill",
                     InitialContact = "Phone",
                     TotalCost = 520.00, DepositAmount = 130.00, DepositPaymentMethod = "Venmo", DepositDateTime = today.AddDays(-90),
                     DateOrderPlaced = today.AddDays(-91), ContractSent = true,
@@ -672,19 +669,13 @@ namespace CCCInventory.Data
                     ],
                     WeddingDetails = new WeddingDetails
                     {
-                        EventDate = w2Sat, ReceptionLocation = "The Barn at Hickory Hill",
+                        EventDate = w2Sat,
                         CeremonySameLocation = false, CeremonyTime = "14:00", ReceptionTime = "16:30",
                         Partner2Name = "Marcus Reed", Partner2Phone = "555-410-3303",
                         DayOfContactTitle = "Maid of Honor",
-                        ContractReturnByDate = today.AddDays(-60),
                         CakeBoardColor = "White", CakeTopper = false, HasFlowers = true,
                         FlowerType = "Buttercream", FlowersProvidedBy = "CCC",
                         PickupPersonName = "Marcus Reed", PickupPersonPhone = "555-410-3303",
-                        MainCakeFlavorDescription = "Lemon top tier; half vanilla / half red velvet base",
-                        MainCakeDesignDescription = "Semi-naked with buttercream peonies",
-                        KitchenCakeFlavorDescription = "Vanilla with vanilla buttercream",
-                        CupcakeFlavorDescription = "Red velvet with cream cheese",
-                        CupcakeDesignDescription = "White swirl, gold sprinkles",
                         TotalServings = 120
                     }
                 },
@@ -715,20 +706,14 @@ namespace CCCInventory.Data
                     ],
                     WeddingDetails = new WeddingDetails
                     {
-                        EventDate = w3Sat, ReceptionLocation = "Hilton Garden Inn Southpointe - Grand Ballroom",
+                        EventDate = w3Sat,
                         CeremonySameLocation = true, CeremonyTime = "16:00", ReceptionTime = "17:30",
                         Partner2Name = "Ethan Brooks", Partner2Phone = "555-410-4404",
                         DayOfContactTitle = "Wedding Planner",
                         VenueContactName = "Maria Lopez", VenueContactPhone = "555-410-4490",
-                        ContractReturnByDate = today.AddDays(-120),
                         CakeBoardColor = "Silver", CakeTopper = true, HasFlowers = true,
                         FlowerType = "Fake", FlowersProvidedBy = "Customer",
                         DeliveryWindowEnd = "12:00",
-                        MainCakeFlavorDescription = "Four flavors, one per tier (see table)",
-                        MainCakeDesignDescription = "Textured white buttercream, silver drip on top tier, customer silk flowers cascading",
-                        KitchenCakeFlavorDescription = "Chocolate with chocolate buttercream, boxed",
-                        CupcakeFlavorDescription = "Champagne/strawberry and chocolate",
-                        CupcakeDesignDescription = "Blush and white rosettes",
                         TotalServings = 270
                     }
                 },
@@ -750,10 +735,10 @@ namespace CCCInventory.Data
                     ],
                     WeddingDetails = new WeddingDetails
                     {
-                        EventDate = w3Sat, ReceptionLocation = "Canonsburg Town Park Pavilion",
+                        EventDate = w3Sat,
                         ReceptionTime = "18:00",
                         DeliveryWindowEnd = "14:00"
-                        // Missing Partner2Name/Phone, ContractReturnByDate, TotalServings → incomplete
+                        // Missing Partner2Name/Phone and TotalServings → incomplete
                     }
                 },
 

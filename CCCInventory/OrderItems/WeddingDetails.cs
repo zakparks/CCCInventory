@@ -15,8 +15,7 @@ namespace CCCInventory
         public Order? Order { get; set; }
 
         // Event
-        public DateTime? EventDate { get; set; }
-        public string? ReceptionLocation { get; set; }
+        public DateTime? EventDate { get; set; }       // reception location = Order.DeliveryLocation
         public bool? CeremonySameLocation { get; set; }
         public string? CeremonyTime { get; set; }        // "HH:mm"
         public string? ReceptionTime { get; set; }       // "HH:mm"
@@ -27,9 +26,6 @@ namespace CCCInventory
         public string? DayOfContactTitle { get; set; }   // name/phone are Order.SecondaryName / SecondaryPhone
         public string? VenueContactName { get; set; }
         public string? VenueContactPhone { get; set; }
-
-        // Contract
-        public DateTime? ContractReturnByDate { get; set; }
 
         // Display / adornments
         public string? CakeBoardColor { get; set; }      // White / Gold / Silver / Black
@@ -46,12 +42,6 @@ namespace CCCInventory
         public string? PickupPersonName { get; set; }
         public string? PickupPersonPhone { get; set; }
 
-        // Cake description
-        public string? MainCakeFlavorDescription { get; set; }
-        public string? MainCakeDesignDescription { get; set; }
-        public string? KitchenCakeFlavorDescription { get; set; }
-        public string? CupcakeFlavorDescription { get; set; }
-        public string? CupcakeDesignDescription { get; set; }
         public int? TotalServings { get; set; }
 
         // Generated Google Doc contract (latest)

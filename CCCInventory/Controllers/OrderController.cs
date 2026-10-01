@@ -70,13 +70,11 @@ namespace CCCInventory.Controllers
                                             (o.IsWedding && (
                                                 o.WeddingDetails == null ||
                                                 o.WeddingDetails.EventDate == null ||
-                                                o.WeddingDetails.ReceptionLocation == null || o.WeddingDetails.ReceptionLocation == "" ||
                                                 o.WeddingDetails.Partner2Name == null || o.WeddingDetails.Partner2Name == "" ||
                                                 o.WeddingDetails.Partner2Phone == null || o.WeddingDetails.Partner2Phone == "" ||
-                                                o.WeddingDetails.ContractReturnByDate == null ||
                                                 o.WeddingDetails.TotalServings == null ||
                                                 string.IsNullOrEmpty(o.CustEmail) ||
-                                                (o.OrderType == "Delivery" && string.IsNullOrEmpty(o.DeliveryLocation))
+                                                string.IsNullOrEmpty(o.DeliveryLocation)
                                             ))
                                         )),
                 _               => query.Where(o => !o.CancelledFlag && o.OrderDateTime > now)

@@ -44,7 +44,8 @@
 | 7 | Bake sheet redesign — per-layer rows, cakes+cupcakes combined, Thu–Wed bake week, day-of-week color highlights (Mon=red…Sat=purple), order # pastel color coding, Micro/Quarter Sheet special display rules, Other items at bottom, print layout with gridlines |
 | 8 | Authentication — ASP.NET Core Identity + JWT HttpOnly cookie; 4-digit PIN per staff member; inactivity timeout → PIN screen; staff management in Management page; AuditLog table |
 | pre-9 | Pre-phase fixes — attachment carousel modal (click image thumbnail → full-size modal w/ prev/next); CookieSize already present in management categories |
-| Wedding | Wedding Orders — "Wedding Order" toggle on the order form; `WeddingDetails` entity (1:1 with Order) for contract-only fields (event date, reception, Bride/Groom #2, day-of title, venue/pickup contacts, return-by date, board color, topper, flowers/florist, delivery window end, contract descriptions, total servings); wedding-mode labels (Bride/Groom, Delivery Address, Delivery Window Start, Pickup Date); (?) tooltip explaining Event Date vs Delivery/Pickup Date; staff-filled contract blanks are required (red + Incomplete, still saveable); ring icon with "Wedding Order" tooltip on All Orders, Bake Sheet, customer history, order form; **Generate Contract** copies the Google Doc template into Drive and fills `{{tokens}}` (Overwrite → trash old / New Revision → `YYYY/MM/DD - REVISED - …`); Management → Google Integration (connect account, template token check). Setup + token reference: `docs/wedding-contract-template.md` |
+| Wedding | Wedding Orders — "Wedding Order" toggle on the order form; `WeddingDetails` entity (1:1 with Order) for contract-only fields (event date, ceremony/reception times, Bride/Groom #2, day-of title, venue/pickup contacts, board color, topper, flowers/florist, delivery window end, total servings); reception location = `DeliveryLocation`, contract return-by = delivery date − 10 days, flavor descriptions generated from cake/cupcake rows; wedding-mode labels (Bride/Groom, Reception Location / Delivery Address, Delivery Start/End beside the date); day-of contact name/phone shown only in Wedding Details; (?) tooltip explaining Event Date vs Delivery/Pickup Date; staff-filled contract blanks are required (red + Incomplete, still saveable); ring icon with "Wedding Order" tooltip on All Orders, Bake Sheet, customer history, order form; **Generate Contract** copies the Google Doc template into Drive and fills `{{tokens}}` (Overwrite → trash old / New Revision → `YYYY/MM/DD - REVISED - …`); answered questions lose their client box, chosen options get ✔ on the left and the other options are removed; Management → Google Integration (connect account, template token check). Setup + token reference: `docs/wedding-contract-template.md` |
+| Form UX | Order form: Title + Order # on one row; Order Information laid out row-by-row so Tab goes name → phone → email → initial contact → date → time → location (Details, radios, toggles skip Tab); `app-time-input` (type any time — "3", "330p", "15:30", "noon" — or pick hour / 15-min / AM-PM; bare 1–6 = PM, 7–11 = AM); Pickup/Delivery labels for every order; new cake tier copies the previous tier except size; Signature Cupcakes button blue |
 | 14 | Customer Profiles — `Customer` entity (FirstName, LastName, Email, Phone); `CustomerId` FK on Order (nullable, SetNull on delete); `CustomerController` (list, detail, search, CRUD, merge); customer link/create logic on order save (email as unique key); autocomplete dropdown on `custName` field in order form; `/customers` list page; `/customers/:id` detail/edit page with order history; "New Order" from customer pre-fills contact fields; seed customers linked to seed orders; customer merge (re-points all orders to kept record, deletes duplicate) |
 
 ### Known Gaps in Completed Phases
@@ -91,6 +92,9 @@ Public internet ──HTTPS──► Cloudflare edge ──► orders.canonsburg
 
 **⚠ Phase 8 (auth) must be complete before the public URL goes live.**
 
+**Pre-release TODOs:**
+- **Pricing** — incorporate the shop's pricing matrix into the app logic for all orders (see Phase 13; get the matrix from the bakery).
+
 **Wedding contract / Google OAuth checks at deployment** (see `docs/wedding-contract-template.md`):
 - OAuth consent screen **Publishing status must be "In production"**, not "Testing" — in Testing, Google expires the refresh token after 7 days and contract generation silently stops (users see an "unverified app" warning on connect; that's expected).
 - Add `https://orders.canonsburgcakecompany.com/api/google/callback` as an Authorized redirect URI; set `Google__ClientId` / `Google__ClientSecret` env vars; the callback URL is built from the browser's address, so `Google:RedirectUri` normally stays blank.
@@ -105,6 +109,11 @@ Public internet ──HTTPS──► Cloudflare edge ──► orders.canonsburg
 5. Register self-hosted GitHub Actions runner on bakery PC
 6. Publish .NET app as self-contained `win-x64` Windows Service; install with `sc.exe`
 7. Configure Google OAuth redirect URI once domain is live (prerequisite for Phase 10)
+
+### Wedding contract follow-ups *(open)*
+
+- **Inspiration photos** — explore putting an order's uploaded inspiration image(s) into the contract's "Inspiration photo" area. Docs API `insertInlineImage` needs an image URL Google can fetch (the app's attachment URLs are behind auth), so likely: upload the image to Drive, insert from Drive, then remove the temporary file/permission.
+- **Design descriptions** — `{{main_design_description}}` / `{{cupcake_design_description}}` are blank (the Contract Descriptions section was removed from the form); decide where they come from.
 
 ### Phase 10 — Google Calendar Integration *(post-launch)*
 

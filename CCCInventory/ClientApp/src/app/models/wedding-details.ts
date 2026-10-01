@@ -3,8 +3,7 @@ export interface WeddingDetails {
   orderNumber?: number;
 
   // Event
-  eventDate?: string | null;
-  receptionLocation?: string | null;
+  eventDate?: string | null;     // reception location is the order's deliveryLocation
   ceremonySameLocation?: boolean | null;
   ceremonyTime?: string | null;
   receptionTime?: string | null;
@@ -15,9 +14,6 @@ export interface WeddingDetails {
   dayOfContactTitle?: string | null;
   venueContactName?: string | null;
   venueContactPhone?: string | null;
-
-  // Contract
-  contractReturnByDate?: string | null;
 
   // Display / adornments
   cakeBoardColor?: string | null;
@@ -34,12 +30,6 @@ export interface WeddingDetails {
   pickupPersonName?: string | null;
   pickupPersonPhone?: string | null;
 
-  // Cake description
-  mainCakeFlavorDescription?: string | null;
-  mainCakeDesignDescription?: string | null;
-  kitchenCakeFlavorDescription?: string | null;
-  cupcakeFlavorDescription?: string | null;
-  cupcakeDesignDescription?: string | null;
   totalServings?: number | null;
 
   // Generated contract (server-managed)

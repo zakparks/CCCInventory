@@ -87,14 +87,14 @@ app fields are optional, the token is blank when staff hasn't filled them in.
 | `{{order_number}}` | Order number | Header "Contract/Order Number" |
 | `{{today}}` | Date generated | |
 | `{{event_date}}` | *Saturday, October 17, 2026* | Date of Event |
-| `{{reception_location}}` | | Location of Reception |
+| `{{reception_location}}` | Order's Reception Location / Delivery Address field | Location of Reception |
 | `{{ceremony_same_location}}` | Yes / No | Ceremony at the same location? |
 | `{{ceremony_time}}` / `{{reception_time}}` | *4:30 PM* | Ceremony / Reception Start Time |
 | `{{partner1_name}}` / `{{partner1_phone}}` | Order customer name / phone | Bride/Groom #1 |
 | `{{partner2_name}}` / `{{partner2_phone}}` | | Bride/Groom #2 |
 | `{{email}}` | Order email | Email address |
 | `{{day_of_title}}` / `{{day_of_name}}` / `{{day_of_phone}}` | | Day-of contact |
-| `{{return_by_date}}` | *November 1, 2026* | Return contract on or before |
+| `{{return_by_date}}` | Delivery/pickup date − 10 days | Return contract on or before |
 | `{{cake_stand_size}}` | Largest tier + 2 (inches) | Cake stand at least ___ inches |
 | `{{board_color}}` | White / Gold / Silver / Black | Board color |
 | `{{cake_topper}}` / `{{flowers}}` | Yes / No | Topper / flowers questions |
@@ -107,11 +107,13 @@ app fields are optional, the token is blank when staff hasn't filled them in.
 | `{{venue_contact_name}}` / `{{venue_contact_phone}}` | | Contact Person for venue |
 | `{{pickup_date}}` / `{{pickup_time}}` | Order date/time (pickup orders only) | Pickup Date / Time |
 | `{{pickup_person_name}}` / `{{pickup_person_phone}}` | | Person picking up |
-| `{{main_flavor_description}}` / `{{main_design_description}}` | | Main Cake descriptions |
+| `{{main_flavor_description}}` | *Cake: Vanilla, Lemon; Filling: Raspberry; Icing: …* from the cake tiers | Main Cake: Description of Flavors |
+| `{{main_design_description}}` | Blank for now (no app field); staff types it in the doc | Main Cake: Description of Design |
 | `{{main_servings_total}}` | Sum of tier servings | Total servings in tiered cake |
 | `{{kitchen_cakes}}` | Yes / No (any sheet cakes) | Will additional kitchen cakes… |
-| `{{kitchen_flavor_description}}` / `{{kitchen_servings_total}}` | | Kitchen Cakes |
-| `{{cupcake_flavor_description}}` / `{{cupcake_design_description}}` | | Cupcakes |
+| `{{kitchen_flavor_description}}` / `{{kitchen_servings_total}}` | Summary from the sheet cakes / servings sum | Kitchen Cakes |
+| `{{cupcake_flavor_description}}` | Summary from the cupcake rows | Cupcakes: Description of Flavors |
+| `{{cupcake_design_description}}` | Blank for now (no app field) | Description of Cupcake Design |
 | `{{cupcake_servings_total}}` | Sum of cupcake quantities | Total servings in cupcakes |
 | `{{total_servings}}` | Total Servings field (falls back to the sum) | Total servings for entire order |
 | `{{total_cost}}` / `{{deposit_amount}}` | *$980.00* | Cost breakdown |
@@ -134,11 +136,17 @@ Example main-cake row: `{{main.size}} | {{main.servings}} | {{main.cake}} | {{ma
 Servings come from the template's chart (6"=12, 8"=24, 10"=38, 12"=56 round; ½ sheet=70, ¼ sheet=33);
 other sizes/shapes leave the cell blank.
 
-### Check-mark tokens
+### Option lists (`{{mark:…}}`)
 
-`{{mark:<token>=<value>}}` prints ✔ when the token equals the value, otherwise nothing. Handy next to
-the option lists, e.g. `White {{mark:board_color=White}}`, `{{mark:flower_type=Live}} Live flowers/greens`,
-`{{mark:flowers_provided_by=Florist}}`. Values match either the stored option (`Live`, `Fake`,
-`Buttercream`, `Florist`, `Customer`, `CCC`, `N/A`) or the displayed text.
+Put `{{mark:<token>=<value>}}` at the **start** of each option line, e.g. `{{mark:board_color=White}}White [box]`,
+`{{mark:flower_type=Live}}[box] Live flowers/greens`. When the order has a value for that token, the matching
+line becomes `✔ White` (its client box removed) and the other option lines are deleted. With no value, every
+line stays as-is for the client. Values match either the stored option (`Live`, `Fake`, `Buttercream`,
+`Florist`, `Customer`, `CCC`, `N/A`) or the displayed text. "Flowers: No" answers both flower lists as N/A.
+
+### Client boxes next to tokens
+
+A token placed directly before a client (eSignature) box, `{{ceremony_time}} [box]`, removes the box when the
+order has a value, so the contract never shows both a value and a box. Blank tokens leave the box.
 
 `GET /api/weddingcontract/{orderNumber}/preview` shows the exact values an order would produce.

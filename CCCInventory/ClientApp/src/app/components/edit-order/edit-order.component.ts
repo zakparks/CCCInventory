@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, Renderer2, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormsModule, FormGroup, FormBuilder, Validators, AbstractControl, FormArray } from '@angular/forms';
+import { ReactiveFormsModule, FormsModule, FormGroup, FormBuilder, Validators, AbstractControl, FormArray, FormControl } from '@angular/forms';
 import { RouterModule, ActivatedRoute, NavigationExtras, Router } from '@angular/router';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { Observable, Subject } from 'rxjs';
@@ -17,11 +17,12 @@ import { CustomerService } from '../../services/customer.service';
 import { GoogleService, GoogleStatus } from '../../services/google.service';
 import { WeddingDetails } from '../../models/wedding-details';
 import { WeddingIconComponent } from '../shared/wedding-icon/wedding-icon.component';
+import { TimeInputComponent } from '../shared/time-input/time-input.component';
 
 @Component({
   selector: 'app-edit-order-component',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, NgbModule, WeddingIconComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, NgbModule, WeddingIconComponent, TimeInputComponent],
   templateUrl: './edit-order.component.html'
 })
 export class EditOrderComponent implements OnInit, OnDestroy {
@@ -154,7 +155,6 @@ export class EditOrderComponent implements OnInit, OnDestroy {
     isWedding: [false],
     wedding: this._formBuilder.group({
       eventDate: [''],
-      receptionLocation: [''],
       ceremonySameLocation: [null as boolean | null],
       ceremonyTime: [''],
       receptionTime: [''],
@@ -163,7 +163,6 @@ export class EditOrderComponent implements OnInit, OnDestroy {
       dayOfContactTitle: [''],
       venueContactName: [''],
       venueContactPhone: [''],
-      contractReturnByDate: [''],
       cakeBoardColor: [''],
       cakeTopper: [null as boolean | null],
       hasFlowers: [null as boolean | null],
@@ -175,11 +174,6 @@ export class EditOrderComponent implements OnInit, OnDestroy {
       deliveryWindowEnd: [''],
       pickupPersonName: [''],
       pickupPersonPhone: [''],
-      mainCakeFlavorDescription: [''],
-      mainCakeDesignDescription: [''],
-      kitchenCakeFlavorDescription: [''],
-      cupcakeFlavorDescription: [''],
-      cupcakeDesignDescription: [''],
       totalServings: [null as number | null]
     }),
     cakeTierInfo: this._formBuilder.array([]),
@@ -215,15 +209,33 @@ export class EditOrderComponent implements OnInit, OnDestroy {
     return this.editOrderFormGroup.get('orderType')?.value ?? '';
   }
 
-  // Label for the order's own date: in wedding mode it is the delivery or pickup date (not the event date)
+  get isPickup(): boolean {
+    return this.orderTypeValue === 'Pickup';
+  }
+
+  // Wedding deliveries show the 2-hour window (start + end) beside the date
+  get showWindowEnd(): boolean {
+    return this.isWedding && this.orderTypeValue === 'Delivery';
+  }
+
+  // The order's own date is the delivery or pickup date (for weddings, not the event date)
   get orderDateLabel(): string {
-    if (this.isWedding && this.orderTypeValue === 'Pickup') return 'Pickup Date *';
-    return 'Delivery Date *';
+    return this.isPickup ? 'Pickup Date *' : 'Delivery Date *';
   }
 
   get orderTimeLabel(): string {
-    if (!this.isWedding) return 'Delivery Time';
-    return this.orderTypeValue === 'Pickup' ? 'Pickup Time' : 'Delivery Window Start';
+    if (this.isPickup) return 'Pickup Time';
+    return this.showWindowEnd ? 'Delivery Start' : 'Delivery Time';
+  }
+
+  // Weddings use this field for the reception: it is the delivery address (or, for pickups, just the venue)
+  get locationLabel(): string {
+    if (!this.isWedding) return 'Delivery/Pickup Location';
+    return this.isPickup ? 'Reception Location *' : 'Reception Location / Delivery Address *';
+  }
+
+  ctrl(path: string): FormControl {
+    return this.editOrderFormGroup.get(path) as FormControl;
   }
 
   // Latest generated contract, kept apart from orderToEdit (which the save paths rebuild from the form)
@@ -280,13 +292,11 @@ export class EditOrderComponent implements OnInit, OnDestroy {
     if (v.isWedding) {
       const w = v.wedding ?? {};
       if (!w.eventDate) r.add('w_eventDate');
-      if (!w.receptionLocation?.trim()) r.add('w_receptionLocation');
       if (!w.partner2Name?.trim()) r.add('w_partner2Name');
       if (!w.partner2Phone?.trim()) r.add('w_partner2Phone');
-      if (!w.contractReturnByDate) r.add('w_contractReturnByDate');
       if (w.totalServings === null || w.totalServings === undefined || w.totalServings === '') r.add('w_totalServings');
       if (!v.custEmail?.trim()) r.add('w_custEmail');
-      if (v.orderType === 'Delivery' && !v.deliveryLocation?.trim()) r.add('w_deliveryLocation');
+      if (!v.deliveryLocation?.trim()) r.add('w_deliveryLocation');
     }
 
     return r;
@@ -388,7 +398,8 @@ export class EditOrderComponent implements OnInit, OnDestroy {
     this.editOrderFormGroup.get('custName')!.valueChanges.pipe(
       debounceTime(300),
       distinctUntilChanged(),
-      filter(val => val && val.length >= 2),
+      // Only while someone is typing in the field (not when an existing order loads)
+      filter(val => val && val.length >= 2 && document.activeElement?.id === 'custName'),
       switchMap(val => this.customerService.Search(val)),
       takeUntil(this.destroy$)
     ).subscribe(results => {
@@ -591,7 +602,6 @@ export class EditOrderComponent implements OnInit, OnDestroy {
     const d = w ?? {};
     this.weddingGroup.reset({
       eventDate: d.eventDate ? this.formatDate(new Date(d.eventDate)) : this.editOrderFormGroup.get('orderDate')?.value ?? '',
-      receptionLocation: d.receptionLocation ?? '',
       ceremonySameLocation: d.ceremonySameLocation ?? null,
       ceremonyTime: d.ceremonyTime ?? '',
       receptionTime: d.receptionTime ?? '',
@@ -600,7 +610,6 @@ export class EditOrderComponent implements OnInit, OnDestroy {
       dayOfContactTitle: d.dayOfContactTitle ?? '',
       venueContactName: d.venueContactName ?? '',
       venueContactPhone: d.venueContactPhone ?? '',
-      contractReturnByDate: d.contractReturnByDate ? this.formatDate(new Date(d.contractReturnByDate)) : '',
       cakeBoardColor: d.cakeBoardColor ?? '',
       cakeTopper: d.cakeTopper ?? null,
       hasFlowers: d.hasFlowers ?? null,
@@ -612,11 +621,6 @@ export class EditOrderComponent implements OnInit, OnDestroy {
       deliveryWindowEnd: d.deliveryWindowEnd ?? (this.addHours(this.editOrderFormGroup.get('orderTime')?.value ?? '', 2)),
       pickupPersonName: d.pickupPersonName ?? '',
       pickupPersonPhone: d.pickupPersonPhone ?? '',
-      mainCakeFlavorDescription: d.mainCakeFlavorDescription ?? '',
-      mainCakeDesignDescription: d.mainCakeDesignDescription ?? '',
-      kitchenCakeFlavorDescription: d.kitchenCakeFlavorDescription ?? '',
-      cupcakeFlavorDescription: d.cupcakeFlavorDescription ?? '',
-      cupcakeDesignDescription: d.cupcakeDesignDescription ?? '',
       totalServings: d.totalServings ?? null
     }, { emitEvent: false });
   }
@@ -987,6 +991,11 @@ export class EditOrderComponent implements OnInit, OnDestroy {
 
   addRow(formGroupName: string, formGroup: FormGroup) {
     const formArray = this.editOrderFormGroup.get(formGroupName) as FormArray;
+    // A new cake tier starts as a copy of the previous one (layers, shape, flavors, ...) except its size
+    if (formGroupName === 'cakeTierInfo' && formArray.length > 0) {
+      const { tierSize, ...rest } = formArray.at(formArray.length - 1).value;
+      formGroup.patchValue(rest);
+    }
     formArray.push(this._formBuilder.group(formGroup.controls));
 
     switch (formGroupName) {

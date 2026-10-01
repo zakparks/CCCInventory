@@ -24,11 +24,15 @@ namespace CCCInventory.Services
     // The template holds {{tokens}} (see docs/wedding-contract-template.md):
     //   {{event_date}}                   scalar value
     //   {{main.size}} / {{cupcake.qty}}  table-row tokens; the row they sit in is repeated per item
-    //   {{mark:board_color=Gold}}        "✔" when board_color is Gold, otherwise blank
+    //   {{mark:board_color=Gold}}        put at the start of an option line. When board_color has a value,
+    //                                    the matching line gets "✔ " and loses its client box, and the
+    //                                    other option lines are removed; with no value all lines stay.
+    // A scalar token directly before a client (eSignature) box, e.g. "{{ceremony_time}} [box]", removes
+    // the box when it has a value, so the contract never shows both data and a box to fill.
     // Token names are case-insensitive and may contain spaces inside the braces.
     public class WeddingContractService
     {
-        private const string Check = "✔";
+        private const string Check = "✔ ";
         private static readonly CultureInfo Us = CultureInfo.GetCultureInfo("en-US");
         private static readonly Regex TokenRegex = new(@"\{\{([^{}]+)\}\}", RegexOptions.Compiled);
         private static readonly string[] RowGroups = ["main", "kitchen", "cupcake"];
@@ -209,6 +213,25 @@ namespace CCCInventory.Services
 
         private static List<Cake> KitchenCakes(Order o) => (o.Cakes ?? []).Where(IsSheet).ToList();
 
+        // "Cake: Vanilla, Chocolate; Filling: Raspberry; Icing: Vanilla Buttercream" from the order's items
+        private static string FlavorSummary(IEnumerable<(IEnumerable<string?> Cake, string? Filling, string? Icing)> items)
+        {
+            var list = items.ToList();
+            string Join(IEnumerable<string?> xs) => string.Join(", ", xs
+                .Where(x => !string.IsNullOrWhiteSpace(x) && !string.Equals(x, "None", StringComparison.OrdinalIgnoreCase))
+                .Select(x => x!.Trim()).Distinct());
+            var parts = new[]
+            {
+                ("Cake", Join(list.SelectMany(i => i.Cake))),
+                ("Filling", Join(list.Select(i => i.Filling))),
+                ("Icing", Join(list.Select(i => i.Icing))),
+            };
+            return string.Join("; ", parts.Where(p => p.Item2 != "").Select(p => $"{p.Item1}: {p.Item2}"));
+        }
+
+        private static string CakeFlavorSummary(IEnumerable<Cake> cakes) =>
+            FlavorSummary(cakes.Select(c => ((IEnumerable<string?>)CakeFlavorText(c).Split(" / "), c.FillingFlavor, c.IcingFlavor)));
+
         public static Dictionary<string, string> BuildValues(Order o)
         {
             var w = o.WeddingDetails ?? new WeddingDetails();
@@ -232,7 +255,7 @@ namespace CCCInventory.Services
 
                 // Event
                 ["event_date"] = Date(eventDate, "dddd, MMMM d, yyyy"),
-                ["reception_location"] = w.ReceptionLocation ?? "",
+                ["reception_location"] = o.DeliveryLocation ?? "",
                 ["ceremony_same_location"] = YesNo(w.CeremonySameLocation),
                 ["ceremony_time"] = Time(w.CeremonyTime),
                 ["reception_time"] = Time(w.ReceptionTime),
@@ -248,15 +271,15 @@ namespace CCCInventory.Services
                 ["day_of_phone"] = o.SecondaryPhone ?? "",
 
                 // Contract
-                ["return_by_date"] = Date(w.ContractReturnByDate),
+                ["return_by_date"] = o.OrderDateTime != null ? Date(o.OrderDateTime.Value.AddDays(-10)) : "",
 
                 // Display / adornments
                 ["cake_stand_size"] = largestTier != null ? (largestTier.Value + 2).ToString(Us) : "",
                 ["board_color"] = w.CakeBoardColor ?? "",
                 ["cake_topper"] = YesNo(w.CakeTopper),
                 ["flowers"] = YesNo(w.HasFlowers),
-                ["flower_type"] = FlowerTypeText(w.FlowerType),
-                ["flowers_provided_by"] = ProvidedByText(w.FlowersProvidedBy),
+                ["flower_type"] = FlowerTypeText(NoFlowers(w) ? "N/A" : w.FlowerType),
+                ["flowers_provided_by"] = ProvidedByText(NoFlowers(w) ? "N/A" : w.FlowersProvidedBy),
                 ["florist_name"] = w.FloristName ?? "",
                 ["florist_phone"] = w.FloristPhone ?? "",
                 ["florist_time"] = Time(w.FloristDeliveryTime),
@@ -276,14 +299,15 @@ namespace CCCInventory.Services
                 ["pickup_person_phone"] = w.PickupPersonPhone ?? "",
 
                 // Cake description
-                ["main_flavor_description"] = w.MainCakeFlavorDescription ?? "",
-                ["main_design_description"] = w.MainCakeDesignDescription ?? "",
+                ["main_flavor_description"] = CakeFlavorSummary(main),
+                ["main_design_description"] = "",   // no app field yet; staff writes it in the doc
                 ["main_servings_total"] = Count(mainServings),
                 ["kitchen_cakes"] = kitchen.Count > 0 ? "Yes" : "No",
-                ["kitchen_flavor_description"] = w.KitchenCakeFlavorDescription ?? "",
+                ["kitchen_flavor_description"] = CakeFlavorSummary(kitchen),
                 ["kitchen_servings_total"] = Count(kitchenServings),
-                ["cupcake_flavor_description"] = w.CupcakeFlavorDescription ?? "",
-                ["cupcake_design_description"] = w.CupcakeDesignDescription ?? "",
+                ["cupcake_flavor_description"] = FlavorSummary((o.Cupcakes ?? []).Select(c =>
+                    ((IEnumerable<string?>)[c.CupcakeFlavor], c.FillingFlavor, c.IcingFlavor))),
+                ["cupcake_design_description"] = "",   // no app field yet; staff writes it in the doc
                 ["cupcake_servings_total"] = Count(cupcakeServings),
                 ["total_servings"] = w.TotalServings?.ToString(Us) ?? Count(mainServings + kitchenServings + cupcakeServings),
 
@@ -305,10 +329,13 @@ namespace CCCInventory.Services
             return new Dictionary<string, string>
             {
                 ["board_color"] = w.CakeBoardColor ?? "",
-                ["flower_type"] = w.FlowerType ?? "",
-                ["flowers_provided_by"] = w.FlowersProvidedBy ?? "",
+                ["flower_type"] = NoFlowers(w) ? "N/A" : w.FlowerType ?? "",
+                ["flowers_provided_by"] = NoFlowers(w) ? "N/A" : w.FlowersProvidedBy ?? "",
             };
         }
+
+        // "No flowers" answers the follow-up questions too: both become N/A
+        private static bool NoFlowers(WeddingDetails w) => w.HasFlowers == false;
 
         private static readonly Dictionary<string, string[]> RowFields = new()
         {
@@ -442,9 +469,15 @@ namespace CCCInventory.Services
                 }
             }
 
+            // Index-based edits, highest position first: the new table-row text, plus removing client
+            // boxes and unchosen option lines (see BuildFieldDeletes). They never overlap: the row text
+            // is inside tables and the deletes are in body paragraphs.
             var requests = inserts
-                .OrderByDescending(i => i.Index)
-                .Select(i => new Request { InsertText = new InsertTextRequest { Location = new Location { Index = i.Index }, Text = i.Text } })
+                .Select(i => (Index: i.Index, Request: new Request { InsertText = new InsertTextRequest { Location = new Location { Index = i.Index }, Text = i.Text } }))
+                .Concat(BuildFieldDeletes(doc, values, rawValues, rows).Select(d => (Index: d.Start,
+                    Request: new Request { DeleteContentRange = new DeleteContentRangeRequest { Range = new Google.Apis.Docs.v1.Data.Range { StartIndex = d.Start, EndIndex = d.End } } })))
+                .OrderByDescending(x => x.Index)
+                .Select(x => x.Request)
                 .ToList();
 
             var unknown = new List<string>();
@@ -467,6 +500,83 @@ namespace CCCInventory.Services
                 });
             }
             return (requests, unknown);
+        }
+
+        // Client boxes appear in the API as inline objects. For each body paragraph:
+        //  - option line ({{mark:key=value}}): when key has a value, the matching line loses its boxes and
+        //    every other option line for that key is deleted; with no value nothing changes.
+        //  - "{{token}} [box]": when the token has a value the box (and the space before it, unless text
+        //    follows the box directly) is deleted;
+        //    when it is blank only the space goes, leaving the box for the client.
+        private static List<(int Start, int End)> BuildFieldDeletes(Document doc,
+            Dictionary<string, string> values,
+            Dictionary<string, string> rawValues,
+            Dictionary<string, List<Dictionary<string, string>>> rows)
+        {
+            const char Box = '\uFFFC';
+            var deletes = new List<(int Start, int End)>();
+            var body = doc.Body?.Content ?? [];
+            for (int e = 0; e < body.Count; e++)
+            {
+                var para = body[e].Paragraph;
+                if (para == null || body[e].StartIndex == null || body[e].EndIndex == null) continue;
+                int baseIndex = body[e].StartIndex!.Value;
+
+                // Paragraph text with one placeholder character per index of each non-text element
+                var sb = new StringBuilder();
+                foreach (var pe in para.Elements ?? [])
+                {
+                    if (pe.TextRun != null) sb.Append(pe.TextRun.Content);
+                    else sb.Append(pe.InlineObjectElement != null ? Box : '\uFFFD',
+                        Math.Max(1, (pe.EndIndex ?? 0) - (pe.StartIndex ?? 0)));
+                }
+                var text = sb.ToString();
+                var tokens = TokenRegex.Matches(text).Cast<Match>().ToList();
+
+                var mark = tokens.FirstOrDefault(m => Normalize(m.Groups[1].Value).StartsWith("mark:"));
+                if (mark != null)
+                {
+                    var key = Normalize(mark.Groups[1].Value)[5..].Split('=', 2)[0].Trim();
+                    bool keyHasValue = (values.TryGetValue(key, out var v) && v != "")
+                                    || (rawValues.TryGetValue(key, out var r) && r != "");
+                    if (!keyHasValue) continue;
+
+                    if (Resolve(Normalize(mark.Groups[1].Value), values, rawValues, rows) == Check)
+                    {
+                        for (int i = 0; i < text.Length; i++)
+                        {
+                            if (text[i] != Box) continue;
+                            if (i > 0 && text[i - 1] == ' ') deletes.Add((baseIndex + i - 1, baseIndex + i + 1));
+                            else if (i + 1 < text.Length && text[i + 1] == ' ') deletes.Add((baseIndex + i, baseIndex + i + 2));
+                            else deletes.Add((baseIndex + i, baseIndex + i + 1));
+                        }
+                    }
+                    else
+                    {
+                        // Whole line; the body's last paragraph and one right before a table must keep its newline
+                        bool keepNewline = e == body.Count - 1 || body[e + 1].Table != null;
+                        deletes.Add((baseIndex, body[e].EndIndex!.Value - (keepNewline ? 1 : 0)));
+                    }
+                    continue;
+                }
+
+                foreach (var m in tokens)
+                {
+                    int after = m.Index + m.Length, j = after;
+                    if (j < text.Length && text[j] == ' ') j++;
+                    if (j >= text.Length || text[j] != Box) continue;
+                    var value = Resolve(Normalize(m.Groups[1].Value), values, rawValues, rows);
+                    if (value == null) continue;
+                    if (value != "")
+                    {
+                        // Keep the separating space when a label follows the box directly ("[box]Phone number:")
+                        bool textFollows = j + 1 < text.Length && !char.IsWhiteSpace(text[j + 1]);
+                        deletes.Add(textFollows && j > after ? (baseIndex + j, baseIndex + j + 1) : (baseIndex + after, baseIndex + j + 1));
+                    }
+                    else if (j > after) deletes.Add((baseIndex + after, baseIndex + after + 1));
+                }
+            }
+            return deletes;
         }
 
         private static Task BatchAsync(DocsService docs, string docId, string revisionId, IList<Request> requests, CancellationToken ct) =>

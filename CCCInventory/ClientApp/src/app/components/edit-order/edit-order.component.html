@@ -14,7 +14,7 @@
 
 <form class="row g-3" [formGroup]="editOrderFormGroup" (ngSubmit)="onSubmit()" autocomplete="off" novalidate>
 
-  <!-- Title -->
+  <!-- Title + Order Number -->
   <div class="d-flex align-items-center gap-2 mb-0">
     <h5 class="mb-0 text-nowrap">Title</h5>
     <input formControlName="title" type="text" class="form-control"
@@ -22,116 +22,121 @@
     @if (isFieldIncomplete('title')) {
       <span class="text-danger text-nowrap small">Required</span>
     }
+    <h5 class="mb-0 ms-3 text-nowrap">Order #</h5>
+    <input formControlName="orderNumber" type="text" id="orderNumber" class="form-control text-center"
+      style="width: 6rem" readonly tabindex="-1" aria-label="Order Number" />
   </div>
 
-  <!-- Order Information (3-column grid) -->
+  <!-- Order Information: fields are laid out row by row so Tab moves left-to-right, top-to-bottom.
+       Details, the radio buttons, and the toggles are skipped by Tab (tabindex="-1"). -->
   <h5>Order Information</h5>
   <div class="row g-2">
-
-    <!-- Column 1 -->
-    <div class="col-md-3">
-      <div class="mb-2 form-floating">
-        <input formControlName="orderNumber" type="text" id="orderNumber" class="form-control" readonly />
-        <label for="orderNumber">Order Number</label>
-      </div>
-      <div class="mb-2 form-floating">
-        <input formControlName="custEmail" type="email" id="custEmail" class="form-control"
-          [ngClass]="{'is-invalid': isFieldIncomplete('contact') || isFieldIncomplete('w_custEmail')}" />
-        <label for="custEmail">{{ isWedding ? 'Email *' : 'Customer Email' }}</label>
-      </div>
-      <div class="mb-2 input-group has-validation">
-        <div class="form-floating">
-          <input formControlName="orderDate" type="date" id="orderDate" class="form-control"
-            [ngClass]="{'is-invalid': isInvalid('orderDate') || isFieldIncomplete('orderDate')}" />
-          <label for="orderDate">{{ orderDateLabel }}</label>
-          <div class="invalid-feedback">Date is required.</div>
+    <div class="col-md-6">
+      <div class="row g-2">
+        <div class="col-6 position-relative">
+          <div class="form-floating">
+            <input formControlName="custName" type="text" id="custName" class="form-control"
+              [ngClass]="{'is-invalid': isInvalid('custName') || isFieldIncomplete('custName')}"
+              autocomplete="off"
+              (blur)="closeCustomerDropdown()" />
+            <label for="custName">{{ isWedding ? 'Bride/Groom Name *' : 'Customer Name *' }}</label>
+            <div class="invalid-feedback">Customer name is required.</div>
+          </div>
+          @if (showCustomerDropdown && customerSuggestions.length > 0) {
+            <ul class="list-group position-absolute w-100 shadow-sm" style="z-index:1050; top:100%; left:0;">
+              @for (c of customerSuggestions; track c.customerId) {
+                <li class="list-group-item list-group-item-action py-2" style="cursor:pointer;"
+                  (mousedown)="selectCustomer(c)">
+                  <strong>{{ c.firstName }} {{ c.lastName }}</strong>
+                  @if (c.phone) { <span class="text-muted ms-2 small">{{ c.phone }}</span> }
+                  @if (c.email) { <div class="text-muted small">{{ c.email }}</div> }
+                </li>
+              }
+            </ul>
+          }
         </div>
-        @if (isWedding) {
-          <span class="input-group-text help-tip" tabindex="0" [ngbTooltip]="dateHelpText" container="body">?</span>
-        }
-      </div>
-      <div class="mb-2 form-floating">
-        <input formControlName="deliveryLocation" type="text" id="deliveryLocation" class="form-control"
-          [ngClass]="{'is-invalid': isFieldIncomplete('w_deliveryLocation')}" />
-        <label for="deliveryLocation">{{ isWedding ? (orderTypeValue === 'Pickup' ? 'Pickup Location' : 'Delivery Address *') : 'Delivery/Pickup Location' }}</label>
-      </div>
-      <div class="mb-2 form-floating">
-        <input type="text" formControlName="secondaryName" id="secondaryName" class="form-control" />
-        <label for="secondaryName">Day-of Contact Name</label>
-      </div>
-    </div>
-
-    <!-- Column 2 -->
-    <div class="col-md-3">
-      <div class="mb-2 position-relative">
-        <div class="form-floating">
-          <input formControlName="custName" type="text" id="custName" class="form-control"
-            [ngClass]="{'is-invalid': isInvalid('custName') || isFieldIncomplete('custName')}"
-            autocomplete="off"
-            (blur)="closeCustomerDropdown()" />
-          <label for="custName">{{ isWedding ? 'Bride/Groom Name *' : 'Customer Name *' }}</label>
-          <div class="invalid-feedback">Customer name is required.</div>
+        <div class="col-6">
+          <div class="form-floating">
+            <input formControlName="custPhone" type="tel" maxlength="12" (input)="onTelInput($event, 'custPhone')"
+              id="custPhone" class="form-control"
+              [ngClass]="{'is-invalid': isFieldIncomplete('contact')}" />
+            <label for="custPhone">{{ isWedding ? 'Bride/Groom Phone' : 'Customer Phone' }}</label>
+            <div class="invalid-feedback">At least one of phone or email is required.</div>
+          </div>
         </div>
-        @if (showCustomerDropdown && customerSuggestions.length > 0) {
-          <ul class="list-group position-absolute w-100 shadow-sm" style="z-index:1050; top:100%; left:0;">
-            @for (c of customerSuggestions; track c.customerId) {
-              <li class="list-group-item list-group-item-action py-2" style="cursor:pointer;"
-                (mousedown)="selectCustomer(c)">
-                <strong>{{ c.firstName }} {{ c.lastName }}</strong>
-                @if (c.phone) { <span class="text-muted ms-2 small">{{ c.phone }}</span> }
-                @if (c.email) { <div class="text-muted small">{{ c.email }}</div> }
-              </li>
+
+        <div class="col-6">
+          <div class="form-floating">
+            <input formControlName="custEmail" type="email" id="custEmail" class="form-control"
+              [ngClass]="{'is-invalid': isFieldIncomplete('contact') || isFieldIncomplete('w_custEmail')}" />
+            <label for="custEmail">{{ isWedding ? 'Email *' : 'Customer Email' }}</label>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="form-floating">
+            <input type="text" formControlName="initialContact" id="initialContact" class="form-control" />
+            <label for="initialContact">Initial Contact Method</label>
+          </div>
+        </div>
+
+        <div [class]="showWindowEnd ? 'col-4' : 'col-6'">
+          <div class="input-group has-validation">
+            <div class="form-floating">
+              <input formControlName="orderDate" type="date" id="orderDate" class="form-control"
+                [ngClass]="{'is-invalid': isInvalid('orderDate') || isFieldIncomplete('orderDate')}" />
+              <label for="orderDate">{{ orderDateLabel }}</label>
+              <div class="invalid-feedback">Date is required.</div>
+            </div>
+            @if (isWedding) {
+              <span class="input-group-text help-tip" tabindex="-1" [ngbTooltip]="dateHelpText" container="body">?</span>
             }
-          </ul>
+          </div>
+        </div>
+        <div [class]="showWindowEnd ? 'col-4' : 'col-6'">
+          <app-time-input formControlName="orderTime" inputId="orderTime" [label]="orderTimeLabel" />
+        </div>
+        @if (showWindowEnd) {
+          <div class="col-4">
+            <app-time-input [formControl]="ctrl('wedding.deliveryWindowEnd')" inputId="w_deliveryWindowEnd"
+              label="Delivery End" />
+          </div>
         }
-      </div>
-      <div class="mb-2 form-floating">
-        <input formControlName="custPhone" type="tel" maxlength="12" (input)="onTelInput($event, 'custPhone')"
-          id="custPhone" class="form-control"
-          [ngClass]="{'is-invalid': isFieldIncomplete('contact')}" />
-        <label for="custPhone">{{ isWedding ? 'Bride/Groom Phone' : 'Customer Phone' }}</label>
-        <div class="invalid-feedback">At least one of phone or email is required.</div>
-      </div>
-      <div class="mb-2 form-floating">
-        <input formControlName="orderTime" type="time" id="orderTime" class="form-control" />
-        <label for="orderTime">{{ orderTimeLabel }}</label>
-      </div>
-      <div class="mb-2 form-floating">
-        <input type="text" formControlName="initialContact" id="initialContact" class="form-control" />
-        <label for="initialContact">Initial Contact Method</label>
-      </div>
-      <div class="mb-2 form-floating">
-        <input formControlName="secondaryPhone" type="tel" maxlength="12"
-          (input)="onTelInput($event, 'secondaryPhone')" id="secondaryPhone" class="form-control" />
-        <label for="secondaryPhone">Day-of Contact Phone</label>
+
+        <div class="col-12">
+          <div class="form-floating">
+            <input formControlName="deliveryLocation" type="text" id="deliveryLocation" class="form-control"
+              [ngClass]="{'is-invalid': isFieldIncomplete('w_deliveryLocation')}" />
+            <label for="deliveryLocation">{{ locationLabel }}</label>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Column 3: Details spanning all rows -->
-    <div class="col-md-6 d-flex flex-column" style="min-height: 280px;">
+    <!-- Details spans the right half -->
+    <div class="col-md-6 d-flex flex-column" style="min-height: 240px;">
       <div class="form-floating flex-grow-1">
         <textarea formControlName="details" id="details" class="form-control" style="height: 100%"
-          placeholder="Details"></textarea>
+          placeholder="Details" tabindex="-1"></textarea>
         <label for="details">Details</label>
       </div>
     </div>
   </div>
 
-  <!-- Radio buttons + Toggles on the same line -->
+  <!-- Radio buttons + Toggles on the same line (not in the Tab order) -->
   <div class="d-flex flex-wrap align-items-center gap-4 mt-2">
     <div class="form-check">
       <input class="form-check-input" type="radio" formControlName="orderType" value="Pickup" id="radioPickup"
-        [ngClass]="{'is-invalid': isFieldIncomplete('orderType')}" />
+        tabindex="-1" [ngClass]="{'is-invalid': isFieldIncomplete('orderType')}" />
       <label class="form-check-label" for="radioPickup">Pickup</label>
     </div>
     <div class="form-check">
       <input class="form-check-input" type="radio" formControlName="orderType" value="Delivery" id="radioDelivery"
-        [ngClass]="{'is-invalid': isFieldIncomplete('orderType')}" />
+        tabindex="-1" [ngClass]="{'is-invalid': isFieldIncomplete('orderType')}" />
       <label class="form-check-label" for="radioDelivery">Delivery</label>
     </div>
     <div class="form-check">
       <input class="form-check-input" type="radio" formControlName="orderType" value="Tasting" id="radioTasting"
-        [ngClass]="{'is-invalid': isFieldIncomplete('orderType')}" />
+        tabindex="-1" [ngClass]="{'is-invalid': isFieldIncomplete('orderType')}" />
       <label class="form-check-label" for="radioTasting">Tasting</label>
     </div>
     @if (isFieldIncomplete('orderType')) {
@@ -139,23 +144,23 @@
     }
     <div class="vr"></div>
     <div class="form-check form-switch">
-      <input formControlName="isWedding" class="form-check-input" type="checkbox" role="switch" id="isWeddingSwitch">
+      <input formControlName="isWedding" class="form-check-input" type="checkbox" role="switch" id="isWeddingSwitch" tabindex="-1">
       <label class="form-check-label" for="isWeddingSwitch">Wedding Order</label>
     </div>
     <div class="form-check form-switch">
-      <input formControlName="contractSent" class="form-check-input" type="checkbox" role="switch" id="contractSentSwitch">
+      <input formControlName="contractSent" class="form-check-input" type="checkbox" role="switch" id="contractSentSwitch" tabindex="-1">
       <label class="form-check-label" for="contractSentSwitch">Contract Sent</label>
     </div>
     <div class="form-check form-switch">
-      <input formControlName="dayOfTextSent" class="form-check-input" type="checkbox" role="switch" id="dayOfTextSentSwitch">
+      <input formControlName="dayOfTextSent" class="form-check-input" type="checkbox" role="switch" id="dayOfTextSentSwitch" tabindex="-1">
       <label class="form-check-label" for="dayOfTextSentSwitch">Day-of Text Sent</label>
     </div>
     <div class="form-check form-switch">
-      <input formControlName="confirmationTextSent" class="form-check-input" type="checkbox" role="switch" id="confirmationTextSentSwitch">
+      <input formControlName="confirmationTextSent" class="form-check-input" type="checkbox" role="switch" id="confirmationTextSentSwitch" tabindex="-1">
       <label class="form-check-label" for="confirmationTextSentSwitch">Confirmation Text Sent</label>
     </div>
     <div class="form-check form-switch">
-      <input formControlName="isReadyForPickup" class="form-check-input" type="checkbox" role="switch" id="isReadyForPickupSwitch">
+      <input formControlName="isReadyForPickup" class="form-check-input" type="checkbox" role="switch" id="isReadyForPickupSwitch" tabindex="-1">
       <label class="form-check-label" for="isReadyForPickupSwitch">Ready for Pickup</label>
     </div>
   </div>
@@ -169,36 +174,23 @@
     <div class="row g-2" formGroupName="wedding">
 
       <!-- Event -->
-      <div class="col-md-2">
+      <div class="col-md-3">
         <div class="input-group has-validation">
           <div class="form-floating">
             <input formControlName="eventDate" type="date" id="w_eventDate" class="form-control"
               [ngClass]="{'is-invalid': isFieldIncomplete('w_eventDate')}" />
             <label for="w_eventDate">Event Date *</label>
           </div>
-          <span class="input-group-text help-tip" tabindex="0" [ngbTooltip]="dateHelpText" container="body">?</span>
+          <span class="input-group-text help-tip" tabindex="-1" [ngbTooltip]="dateHelpText" container="body">?</span>
         </div>
       </div>
-      <div class="col-md-4">
-        <div class="form-floating">
-          <input formControlName="receptionLocation" type="text" id="w_receptionLocation" class="form-control"
-            [ngClass]="{'is-invalid': isFieldIncomplete('w_receptionLocation')}" />
-          <label for="w_receptionLocation">Reception Location *</label>
-        </div>
+      <div class="col-md-3">
+        <app-time-input formControlName="ceremonyTime" inputId="w_ceremonyTime" label="Ceremony Start" />
       </div>
-      <div class="col-md-2">
-        <div class="form-floating">
-          <input formControlName="receptionTime" type="time" id="w_receptionTime" class="form-control" />
-          <label for="w_receptionTime">Reception Start</label>
-        </div>
+      <div class="col-md-3">
+        <app-time-input formControlName="receptionTime" inputId="w_receptionTime" label="Reception Start" />
       </div>
-      <div class="col-md-2">
-        <div class="form-floating">
-          <input formControlName="ceremonyTime" type="time" id="w_ceremonyTime" class="form-control" />
-          <label for="w_ceremonyTime">Ceremony Start</label>
-        </div>
-      </div>
-      <div class="col-md-2">
+      <div class="col-md-3">
         <div class="form-floating">
           <select formControlName="ceremonySameLocation" id="w_ceremonySame" class="form-select">
             <option [ngValue]="null"></option>
@@ -209,7 +201,7 @@
         </div>
       </div>
 
-      <!-- Contacts / contract -->
+      <!-- Bride/Groom #2 + servings -->
       <div class="col-md-3">
         <div class="form-floating">
           <input formControlName="partner2Name" type="text" id="w_partner2Name" class="form-control"
@@ -217,7 +209,7 @@
           <label for="w_partner2Name">Bride/Groom #2 Name *</label>
         </div>
       </div>
-      <div class="col-md-2">
+      <div class="col-md-3">
         <div class="form-floating">
           <input formControlName="partner2Phone" type="tel" maxlength="12" id="w_partner2Phone" class="form-control"
             (input)="onTelInput($event, 'wedding.partner2Phone')"
@@ -227,41 +219,45 @@
       </div>
       <div class="col-md-3">
         <div class="form-floating">
-          <input formControlName="dayOfContactTitle" type="text" id="w_dayOfContactTitle" class="form-control"
-            title="Wedding Planner, Maid of Honor, Best Man, Mother of the Bride…" />
-          <label for="w_dayOfContactTitle">Day-of Contact Title</label>
-        </div>
-      </div>
-      <div class="col-md-2">
-        <div class="form-floating">
-          <input formControlName="contractReturnByDate" type="date" id="w_contractReturnByDate" class="form-control"
-            [ngClass]="{'is-invalid': isFieldIncomplete('w_contractReturnByDate')}" />
-          <label for="w_contractReturnByDate">Contract Return By *</label>
-        </div>
-      </div>
-      <div class="col-md-2">
-        <div class="form-floating">
           <input formControlName="totalServings" type="number" min="0" id="w_totalServings" class="form-control"
             [ngClass]="{'is-invalid': isFieldIncomplete('w_totalServings')}" />
           <label for="w_totalServings">Total Servings *</label>
         </div>
       </div>
+      <div class="col-md-3"></div>
+
+      <!-- Day-of contact (name/phone are the order's secondary contact) -->
+      <div class="col-md-3">
+        <div class="form-floating">
+          <input formControlName="dayOfContactTitle" type="text" id="w_dayOfContactTitle" class="form-control"
+            title="Wedding Planner, Maid of Honor, Best Man, Mother of the Bride…" />
+          <label for="w_dayOfContactTitle">Day-of Contact Title</label>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="form-floating">
+          <input [formControl]="ctrl('secondaryName')" type="text" id="secondaryName" class="form-control" />
+          <label for="secondaryName">Day-of Contact Name</label>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="form-floating">
+          <input [formControl]="ctrl('secondaryPhone')" type="tel" maxlength="12" id="secondaryPhone" class="form-control"
+            (input)="onTelInput($event, 'secondaryPhone')" />
+          <label for="secondaryPhone">Day-of Contact Phone</label>
+        </div>
+      </div>
+      <div class="col-md-3"></div>
 
       <!-- Delivery or pickup specifics -->
       @if (orderTypeValue === 'Delivery') {
-        <div class="col-md-2">
-          <div class="form-floating">
-            <input formControlName="deliveryWindowEnd" type="time" id="w_deliveryWindowEnd" class="form-control" />
-            <label for="w_deliveryWindowEnd">Delivery Window End</label>
-          </div>
-        </div>
         <div class="col-md-3">
           <div class="form-floating">
             <input formControlName="venueContactName" type="text" id="w_venueContactName" class="form-control" />
             <label for="w_venueContactName">Venue Contact Name</label>
           </div>
         </div>
-        <div class="col-md-2">
+        <div class="col-md-3">
           <div class="form-floating">
             <input formControlName="venueContactPhone" type="tel" maxlength="12" id="w_venueContactPhone" class="form-control"
               (input)="onTelInput($event, 'wedding.venueContactPhone')" />
@@ -276,7 +272,7 @@
             <label for="w_pickupPersonName">Person Picking Up</label>
           </div>
         </div>
-        <div class="col-md-2">
+        <div class="col-md-3">
           <div class="form-floating">
             <input formControlName="pickupPersonPhone" type="tel" maxlength="12" id="w_pickupPersonPhone" class="form-control"
               (input)="onTelInput($event, 'wedding.pickupPersonPhone')" />
@@ -288,7 +284,7 @@
       <!-- Display & flowers (client may also answer these on the contract) -->
       <div class="col-12 mt-3">
         <h6 class="mb-0">Display &amp; Flowers
-          <span class="text-muted small fw-normal">(optional — the client can also answer these on the contract)</span>
+          <span class="text-muted small fw-normal">(optional — anything left blank stays for the client to fill in on the contract)</span>
         </h6>
       </div>
       <div class="col-md-2">
@@ -353,49 +349,11 @@
               <label for="w_floristPhone">Florist Phone</label>
             </div>
           </div>
-          <div class="col-md-2">
-            <div class="form-floating">
-              <input formControlName="floristDeliveryTime" type="time" id="w_floristDeliveryTime" class="form-control" />
-              <label for="w_floristDeliveryTime">Florist Arrives</label>
-            </div>
+          <div class="col-md-3">
+            <app-time-input formControlName="floristDeliveryTime" inputId="w_floristDeliveryTime" label="Florist Arrives" />
           </div>
         }
       }
-
-      <!-- Cake description (contract text) -->
-      <div class="col-12 mt-3">
-        <h6 class="mb-0">Contract Descriptions</h6>
-      </div>
-      <div class="col-md-4">
-        <div class="form-floating">
-          <textarea formControlName="mainCakeFlavorDescription" id="w_mainFlavor" class="form-control" style="height: 80px"></textarea>
-          <label for="w_mainFlavor">Main Cake — Flavors</label>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="form-floating">
-          <textarea formControlName="mainCakeDesignDescription" id="w_mainDesign" class="form-control" style="height: 80px"></textarea>
-          <label for="w_mainDesign">Main Cake — Design</label>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="form-floating">
-          <textarea formControlName="kitchenCakeFlavorDescription" id="w_kitchenFlavor" class="form-control" style="height: 80px"></textarea>
-          <label for="w_kitchenFlavor">Kitchen Cakes — Flavors</label>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="form-floating">
-          <textarea formControlName="cupcakeFlavorDescription" id="w_cupcakeFlavor" class="form-control" style="height: 80px"></textarea>
-          <label for="w_cupcakeFlavor">Cupcakes — Flavors</label>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="form-floating">
-          <textarea formControlName="cupcakeDesignDescription" id="w_cupcakeDesign" class="form-control" style="height: 80px"></textarea>
-          <label for="w_cupcakeDesign">Cupcakes — Design</label>
-        </div>
-      </div>
 
       <!-- Contract -->
       <div class="col-12 mt-3 d-flex flex-wrap align-items-center gap-3">
@@ -441,7 +399,7 @@
       (click)="addRow('cakeTierInfo', getBlankCakeFormControls())">Cake</button>
     <button type="button" class="btn btn-outline-primary" style="width: 140px"
       (click)="addRow('cupcakeInfo', getBlankCupcakeFormControls())">Custom Cupcakes</button>
-    <button type="button" class="btn btn-outline-secondary" style="width: 155px"
+    <button type="button" class="btn btn-outline-primary" style="width: 155px"
       (click)="addSignatureCupcakeRow()">Signature Cupcakes</button>
     <button type="button" class="btn btn-outline-primary" style="width: 110px"
       (click)="addRow('pupcakeInfo', getBlankPupcakeFormControls())">Pupcakes</button>
