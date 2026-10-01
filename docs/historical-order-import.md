@@ -1,6 +1,6 @@
 # Historical Order Import (Phase 12): design
 
-Status: **design / not started**. This replaces the earlier "filename-only bulk import" plan for Phase 12.
+Status: **design + POC done** (see [POC results](#poc-results)); not started in the app. This replaces the earlier "filename-only bulk import" plan for Phase 12.
 
 ## Goal
 
@@ -31,19 +31,19 @@ an order = all files sharing it.**
 counter, some slightly skewed, some with the next sheet visible underneath), some flatbed scans, and
 screenshots for the earliest digital orders.
 
-### Form versions observed (sampled 17 orders across the range)
+### Form versions observed (43 orders sampled across the range)
 
 Boundaries are approximate; versions overlap (paper v1 and the digital table were both in use in early 2022).
 The extractor does **not** need to be told which version it's looking at.
 
 | Era | Seen on | Format | Notes |
 |---|---|---|---|
-| **A: typed table** | #5, #30, #145, ~#135–#204 | Screenshot of a typed Google Doc table: Order Number, Due Date, Time, Pick up or Delivery, Location, Name, Email, Phone, Cost, Deposit, Form of payment, Paid in full, Flavor, Shape, Size, Quantity + two Notes boxes | Typed, so it's the easiest era. Inspiration photos pasted into the notes. Cancelled orders have a big red **CANCELED** over them. |
-| **B: "ORDER" rolling-pin form** | #60, #80, #509 | Name / Email / Phone 1 / Phone 2 / Address; Order Date (+ "Date" on some printings); Pick up / Delivery; Type of orders checkboxes; Flavors / Shape / Size / Tiers / Quantity; Design dot grid; Delivery/PU Location; Cost / Deposit / Form of Payment / Paid in Full | Handwritten. |
-| **B2** | #750 (Jan 2023) | Same as B but Flavors split into Cake / Filling / Icing Flavor | |
-| **C: logo form** | #1250 (mid-2023) | Canonsburg Cake Company logo, ORDER #, NAME / EMAIL / PHONE, `*NO MARBLE*`, `*MICRO CANNOT BE DAIRY FREE*` | |
-| **D: + admin block** | #1965, #2166, #2500, #2663, #2900 (2024–25) | Adds Confirmation text sent / Day-of text sent / Wedding contract sent; Total cost, Deposit amount, Deposit payment method + date/time, Final payment method + date/time, **Date order placed**, Paid in full; later "# of labor hours" box and a **Tasting** option | |
-| **E: + pricing column** | #3300, #3500, #3904 (Dec 2025 →) | Adds a pricing column (Base ×4, Flavor upgrade, Stack, Board, Labor, Other, Delivery, Total) and Contract sent? | |
+| **A: typed table** | #5–#190 (to ~#204) | Screenshot of a typed Google Doc table: Order Number, Due Date, Time, Pick up or Delivery, Location, Name, Email, Phone, Cost, Deposit, Form of payment, Paid in full, Flavor, Shape, Size, Quantity + two Notes boxes | Typed, so it's the easiest era. Inspiration photos pasted into the notes. Cancelled orders have a big red **CANCELED** over them. |
+| **B: "ORDER" rolling-pin form** | #60, #80, #262, #377, #444, #509 (2022) | Name / Email / Phone 1 / Phone 2 / Address; Order Date (+ "Date" on some printings); Pick up / Delivery; Type of orders checkboxes; Flavors / Shape / Size / Tiers / Quantity; Design dot grid; Delivery/PU Location; Cost / Deposit / Form of Payment / Paid in Full | Handwritten. |
+| **B2** | #615 (Oct 2022) – #1188 (May 2023) | Same as B but Flavors split into Cake / Filling / Icing Flavor | |
+| **C: logo form** | #1250, #1366 (mid-2023); some C stock still used later (#1633, #1965) | Canonsburg Cake Company logo, ORDER #, NAME / EMAIL / PHONE, `*NO MARBLE*`, `*MICRO CANNOT BE DAIRY FREE*` | |
+| **D: + admin block** | #1421 (Sept 2023) – #3157 (Oct 2025) | Adds Confirmation text sent / Day-of text sent / Wedding contract sent; Total cost, Deposit amount, Deposit payment method + date/time, Final payment method + date/time, **Date order placed**, Paid in full; "# of labor hours" box from ~#2047 (May 2024), **Tasting** option from ~#2741 (Apr 2025) | |
+| **E: + pricing column** | #3300 (Dec 2025) → | Adds a pricing column (Base ×4, Flavor upgrade, Stack, Board, Labor, Other, Delivery, Total) and Contract sent? | |
 
 ### Things the extractor has to handle (seen in the samples)
 
@@ -61,7 +61,7 @@ The extractor does **not** need to be told which version it's looking at.
   "never heard back" (#1965). A big diagonal line alone is **not** a cancellation (#60 has an X through the
   design box on a paid order).
 - **Not real customers:** "Decorating Class" (#2500), "Hilltop" (recurring business, #510/#534/#577),
-  "unknown" (#171), first name only ("Jackie", #3300).
+  "unknown" (#171), first name only (#3300).
 - **Info lives outside the boxes:** sticky notes (#1250, #2166, #2900), "SEE BACK" pointing to page 2 (#60,
   #2663), price math scribbled in the design area, highlighter, crossed-out values.
 - **Page 2+** is usually an inspiration photo (#1965 p2) and sometimes overflow details. Send every page of
@@ -69,6 +69,18 @@ The extractor does **not** need to be told which version it's looking at.
 - **Payment fields often hold a number** ("#273", "#466", "1397", "1556"), presumably a Square receipt or
   invoice number. Keep it as text.
 - **Weddings** are identifiable ("WEDDING - 08/01/26", "Contract Sent 7/18/26", "Wedding contract sent? Yes").
+- **Filename and form disagree on spelling** sometimes (a dropped or swapped letter in 4 of 43 samples):
+  the filenames were typed later; the form wins, but a mismatch is worth a reviewer glance.
+- **Duplicate photos** of the same page: `3157 - <Name>.jpg` and `3157 - <Name> (1).jpg` (an earlier
+  photo, before a sticky note was removed). Keep both as attachments, use the most complete as the form.
+- **Missing back pages:** "See back" / "SEE BACK" with no back page in the folder (#60, #2663).
+- **Wedding contract pages** are sometimes filed with the order (#2166 page 3 is page 1 of the printed contract):
+  second partner, venue, ceremony/reception times, day-of contact. Those map onto `WeddingDetails`.
+- **No date at all** (#1633). The Drive file's modified time is usually within a few days of the due date for
+  photos taken in the shop (#377, #1250, #1633, #3500, #3904), so it's a useful fallback hint, but files in
+  `0001-1000` were re-uploaded in Jan 2026, so it's not reliable there.
+- **Other outcomes:** "Never paid invoice, we made it anyway, she never showed up" (#2231, a no-show); quotes
+  that were never confirmed (#190, #1965); loyalty redemptions ("3 free cupcakes with points", #3412).
 - **Google Drive's own OCR is not enough.** For #3904 it extracted the text but split values from their labels
   and garbled the email. Field mapping needs a vision model.
 
@@ -88,9 +100,8 @@ The extractor does **not** need to be told which version it's looking at.
   Duplicate numbers are rejected (409) so an order can't be imported twice.
 - **No pre-created blank orders.** The import queue (below) is the to-do list. Blank `Order` rows would show up
   in All Orders, customer history and reports, and would stay blank for any number that was voided on paper.
-- **Choosing the seed:** recent pace is ≈ 70 orders/month (#3300 Dec 2025 → #3904 Aug 2026), and paper keeps
-  going until go-live. 4250 is ≈ 3 months of headroom past #4000, 4500 ≈ 7 months. Pick it from the paper
-  order number at go-live plus a margin, or use 5000.
+- **Seed: 4500** (decided 2026-10-01). Paper is in the 4100s now; at ≈ 70 orders/month that leaves about
+  5 months of headroom. A gap between the last paper number and 4500 is fine.
 
 ### 2. Key fields only, plus a summary
 
@@ -112,8 +123,9 @@ Extracted / reviewed per order:
 | Deposit | `DepositAmount` | |
 | Paid in full | `PaidInFull` | |
 | Date order placed | `DateOrderPlaced` | Falls back to the due date if unknown (column is non-nullable). |
-| Cancelled | `CancelledFlag` + `CancellationReason` | Reason from the scan ("Never heard back") or "Cancelled (imported)". |
-| Wedding | `IsWedding` | Ring icon in customer history. No `WeddingDetails` row is created for past weddings. |
+| Status | `CancelledFlag` + `CancellationReason` | Extractor returns Completed / Cancelled / Quote / NoShow / Unknown. Cancelled and Quote ("never heard back") → `CancelledFlag` with the reason from the scan. NoShow (made, never picked up) stays not-cancelled with `PaidInFull = false` and the reason in `Details`. |
+| Receipt / invoice # | `Details` | Numbers in the payment boxes ("#273", "1397") are Square receipt / invoice numbers. Kept in the summary text so they're searchable; no new column. |
+| Wedding | `IsWedding` | Ring icon in customer history. A `WeddingDetails` row is only created when a contract page is in the scan (partner 2, venue, times, day-of contact). Wedding tastings are `OrderType` Tasting + `IsWedding`. |
 
 Structured items (`Cakes`, `Cupcakes`, …) are **not** created for past orders. Past-dated orders are already
 excluded from the Incomplete filter and the bake sheet, so the missing items don't cause warnings.
@@ -166,9 +178,9 @@ the order form and in customer history, for filtering, and so the audit log can 
 | `ExtractedJson` | Model output: the fields above, each with a confidence (high/medium/low), plus `formEra`, `isCustomer`, `isCancelled`, `isWedding`, `notes`. |
 | `ReviewedBy`, `ReviewedAt`, `Note` | |
 
-Extraction prompt essentials: the field table above; the era descriptions and gotchas from this doc (ORDER DATE
-= due date, weekday cross-check, Facebook-as-phone, cancellation markers, sticky notes, SEE BACK); the
-date of the nearest neighbouring orders already extracted, for year inference; structured JSON output.
+Extraction prompt and output schema: `tools/order-import-poc/prompt.md` and `schema.json` (from the POC; the
+app's job reuses them). Each request carries every page of one order, the file names, the files' modified
+times, and the due dates of the nearest already-extracted order numbers, for year inference.
 
 **Rough cost:** each page is ≈ 1.5–2.5k image tokens. At ≈ 4–6k input + ≈ 1–2k output per order, 4,000
 orders comes to roughly **$100–250** on the batch API, depending on model choice. Run a 50-order pilot
@@ -181,9 +193,9 @@ first and measure.
 │ scan (zoom, rotate, pages)   │ #2663 · Era D · ⚠ future     │
 │                              │ Date      [08/01/2026 1:00p]│
 │                              │ Type      [Delivery      ▾] │
-│                              │ Name      [Dakota Brown    ]│
-│                              │ Email     [dbrown5920@…    ]│
-│                              │ Phone     [724-470-7061    ]│
+│                              │ Name      [Jane Sample     ]│
+│                              │ Email     [jsample@…       ]│
+│                              │ Phone     [724-555-0100    ]│
 │                              │ Customer  ● new  ○ match…   │
 │                              │ Title     [Wedding cake, 4…]│
 │                              │ Summary   [6/8/10/12 vanil…]│
@@ -222,12 +234,34 @@ in total across both reviewers.
 Prerequisite for production: the identity seed (Decision 1) must be set **before** the first real order is
 created in prod.
 
+## POC results
+
+**2026-10-01 — 43 orders** sampled across all four folders and every form version (#5 – #3904, 56 files incl.
+multi-page orders, PDFs, a duplicate set and a wedding contract page). Transcribed in-session by Claude against
+`tools/order-import-poc/prompt.md` / `schema.json` (no API key in that environment yet), then checked against the
+scans in the side-by-side report (`report.py`). Results file and report stay local: they contain customer data.
+
+- **Every order produced a usable record.** Due date 43/43 (2 inferred: #509 year/month from weekday +
+  neighbors; #1633 has no date, photo date used), name 43/43, email 30/43, phone 35/43, total 33/43.
+- **Customer linking:** 26 have email + phone, 4 email only, **9 phone only** (21%, so the phone fallback
+  matters), 4 neither (2 Facebook-only, 1 internal "Decorating Class", 1 walk-in with a name only).
+- **Weekday cross-check held on every dated paper form** and resolved the one ambiguous date (#509).
+- **Flags a reviewer would need to look at:** 16 orders had at least one low-confidence field: mostly name
+  spelling (handwriting, or filename ≠ form), two dates, three totals (two totals written / faint total box),
+  and one unclear cancellation (#3412: "cancel" written across the form, but a receipt number too).
+- **Statuses:** 35 completed, 5 cancelled, 1 quote never confirmed, 1 no-show, 1 unknown. 6 weddings (one a tasting).
+- Typed era A is trivial; the hard part on paper forms is not reading the text but deciding what the
+  scribbles mean (crossed-out quotes, two totals, sticky notes). The summary field absorbs those well.
+
+**Next:** run `extract.py` through the API on ~50 *different* orders to measure real accuracy and cost per
+order (Opus 5.5 vs Sonnet 5.5), then build Stage 1.
+
 ## Open questions
 
-- Go-live date and the paper order number at that point → seed value.
-- Should cancelled quotes / "never heard back" orders be imported? (Proposed: yes, as cancelled. They still
-  hold customer contact info.)
-- Is `0000 - Tami Szyper` a real order, and what number should it get?
-- Payment-field numbers ("#273", "1397"): Square receipt / invoice numbers? Worth a dedicated field, or fine
-  as text in the summary?
 - Recurring business customers ("Hilltop"): one customer record each, or tag them differently?
+- The `0000 - …` file: skipped for now (unknown whether it's a real order).
+- Signed wedding contracts live in Drive **Wedding Contracts** (and `completed/`), named
+  `YYYY-MM-DD - Name - Wedding Contract`. Worth matching them to imported wedding orders and attaching them?
+
+Resolved 2026-10-01: seed 4500; cancelled / never-heard-back orders **are** imported (as cancelled); payment
+numbers are Square receipts (kept as text).

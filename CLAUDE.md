@@ -94,7 +94,7 @@ Public internet ──HTTPS──► Cloudflare edge ──► orders.canonsburg
 
 **Pre-release TODOs:**
 - **Pricing** — incorporate the shop's pricing matrix into the app logic for all orders (see Phase 13; get the matrix from the bakery).
-- **Order number seed** — set the production `Orders` identity seed above the paper order range (≈ 70 orders/month; e.g. 4500 or 5000, decided from the paper number at go-live) **before the first real order is created**, so historical orders can be imported with their own numbers (Phase 12).
+- **Order number seed** — set the production `Orders` identity seed to **4500** (paper is in the 4100s as of 2026-10-01, ≈ 70 orders/month) **before the first real order is created**, so historical orders can be imported with their own numbers (Phase 12).
 
 **Wedding contract / Google OAuth checks at deployment** (see `docs/wedding-contract-template.md`):
 - OAuth consent screen **Publishing status must be "In production"**, not "Testing" — in Testing, Google expires the refresh token after 7 days and contract generation silently stops (users see an "unverified app" warning on connect; that's expected).
@@ -157,13 +157,13 @@ New independent feature. New backend models, controller, Angular route, manageme
 
 ### Phase 12 — Historical Order Import *(post-launch)*
 
-**Full design: `docs/historical-order-import.md`** (form eras, extraction gotchas, data mapping, review UI, build order, open questions).
+**Full design: `docs/historical-order-import.md`** (form eras, extraction gotchas, data mapping, review UI, build order, POC results, open questions). Extraction pilot (prompt, schema, `extract.py`, `report.py`): `tools/order-import-poc/`.
 
 ~4,000 orders (#1–~#4000, ≈ 4.5 years) in the Drive folder **order archives** (`0001-1000` … `3001-4000`), one file per page named `NNNN - Name.ext` / `NNNN - page 2.ext` (jpg/jpeg/png/pdf; group by leading number). Goal is customer history + contact info, not field-for-field rebuilds.
 
 - **Pipeline:** Drive ingest → `ImportQueueItem` per order → Claude vision extraction of key fields (batch, pre-run) → `/import` review page (scan beside a compact key-field panel, no autosave, keyboard-driven, Save & Next) → order created with its **paper order number**, scan pages attached, `Import` audit entry.
 - **Key fields only:** date/time, pickup/delivery/location, name/email/phone, initial contact, generated Title, readable summary in `Details`, total/deposit/paid, date placed, cancelled + reason, IsWedding. No cake/cupcake items for past orders; **future-dated** imports get "Open full form".
-- **Order numbers:** prod identity seed starts above the paper range (seed chosen at go-live — see Phase 9); imports insert explicit numbers (`IDENTITY_INSERT` on SQL Server). No placeholder rows.
+- **Order numbers:** prod identity seed starts at 4500 (see Phase 9); imports insert explicit numbers (`IDENTITY_INSERT` on SQL Server). No placeholder rows.
 - **Customers (import path only):** match by email, then normalized phone, then name *suggestion*; imports never overwrite an existing customer's contact info.
 - New `Order.ImportedAt` (nullable) marks imported orders.
 

@@ -413,3 +413,8 @@ aio/content/examples/.DS_Store
 
 # Ignore cache created with the Angular CLI.
 .angular/
+
+# Pilot outputs contain customer data
+tools/order-import-poc/*.jsonl
+tools/order-import-poc/report*.html
+tools/order-import-poc/scans/

@@ -1,0 +1,68 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "orderNumber", "formEra", "dueDate", "dueTime", "dueDateEvidence", "orderType", "location",
+    "customerName", "email", "phone", "initialContact", "isCustomer", "title", "summary",
+    "totalCost", "depositAmount", "paidInFull", "paymentRefs", "paymentNotes", "dateOrderPlaced",
+    "status", "cancellationReason", "isWedding", "wedding", "pages", "lowConfidenceFields", "reviewNotes"
+  ],
+  "properties": {
+    "orderNumber": { "type": ["integer", "null"], "description": "Order number written on the form" },
+    "formEra": { "type": "string", "enum": ["A", "B", "B2", "C", "D", "E", "unknown"] },
+    "dueDate": { "type": ["string", "null"], "description": "YYYY-MM-DD" },
+    "dueTime": { "type": ["string", "null"], "description": "HH:MM, 24-hour" },
+    "dueDateEvidence": { "type": "string", "description": "How the due date (and year) was determined" },
+    "orderType": { "type": ["string", "null"], "enum": ["Pickup", "Delivery", "Tasting", null] },
+    "location": { "type": ["string", "null"] },
+    "customerName": { "type": ["string", "null"] },
+    "email": { "type": ["string", "null"] },
+    "phone": { "type": ["string", "null"] },
+    "initialContact": { "type": ["string", "null"], "enum": ["Facebook", "Web", "Phone", "In person", "Email", null] },
+    "isCustomer": { "type": "boolean" },
+    "title": { "type": "string" },
+    "summary": { "type": "string" },
+    "totalCost": { "type": ["number", "null"] },
+    "depositAmount": { "type": ["number", "null"] },
+    "paidInFull": { "type": ["boolean", "null"] },
+    "paymentRefs": { "type": "array", "items": { "type": "string" } },
+    "paymentNotes": { "type": ["string", "null"] },
+    "dateOrderPlaced": { "type": ["string", "null"], "description": "YYYY-MM-DD" },
+    "status": { "type": "string", "enum": ["Completed", "Cancelled", "Quote", "NoShow", "Unknown"] },
+    "cancellationReason": { "type": ["string", "null"] },
+    "isWedding": { "type": "boolean" },
+    "wedding": {
+      "anyOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["partner2Name", "partner2Phone", "venue", "ceremonyTime", "receptionTime", "dayOfContactName", "dayOfContactPhone"],
+          "properties": {
+            "partner2Name": { "type": ["string", "null"] },
+            "partner2Phone": { "type": ["string", "null"] },
+            "venue": { "type": ["string", "null"] },
+            "ceremonyTime": { "type": ["string", "null"] },
+            "receptionTime": { "type": ["string", "null"] },
+            "dayOfContactName": { "type": ["string", "null"] },
+            "dayOfContactPhone": { "type": ["string", "null"] }
+          }
+        }
+      ]
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["file", "kind"],
+        "properties": {
+          "file": { "type": "string" },
+          "kind": { "type": "string", "enum": ["form", "inspiration", "finished-photo", "contract", "notes", "duplicate", "other"] }
+        }
+      }
+    },
+    "lowConfidenceFields": { "type": "array", "items": { "type": "string" } },
+    "reviewNotes": { "type": "array", "items": { "type": "string" } }
+  }
+}
