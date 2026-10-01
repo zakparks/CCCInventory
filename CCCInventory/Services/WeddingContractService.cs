@@ -148,7 +148,7 @@ namespace CCCInventory.Services
                 .Distinct().OrderBy(t => t).ToList();
             var known = KnownTokens();
             var unknown = found.Where(t => !IsKnownToken(t, known)).ToList();
-            var unused = known.Where(k => !found.Contains(k)).ToList();
+            var unused = known.Where(k => !found.Contains(k) && !found.Any(f => f.StartsWith($"mark:{k}="))).ToList();
             return new { templateName = doc.Title, found, unknown, unused };
         }
 
@@ -166,7 +166,11 @@ namespace CCCInventory.Services
 
         // ── Conditional sections ──────────────────────────────────────────────
 
-        public static readonly string[] ConditionNames = ["delivery", "pickup", "florist", "flowers", "kitchen_cakes", "cupcakes"];
+        public static readonly string[] ConditionNames =
+        [
+            "delivery", "pickup", "florist", "flowers", "kitchen_cakes", "cupcakes",
+            "choose_board_color", "choose_flower_type", "choose_flowers_provided_by"
+        ];
 
         // "if:pickup" / "endif:pickup" → "pickup"; anything else → null
         private static string? ConditionName(string token) =>
@@ -181,36 +185,69 @@ namespace CCCInventory.Services
             ["flowers"] = values.GetValueOrDefault("flowers") != "No",
             ["kitchen_cakes"] = values.GetValueOrDefault("kitchen_cakes") != "No",
             ["cupcakes"] = values.GetValueOrDefault("cupcake_servings_total") != "",
+            // "(Choose ONE option below)" prompts: only while nothing has been chosen
+            ["choose_board_color"] = string.IsNullOrEmpty(rawValues.GetValueOrDefault("board_color")),
+            ["choose_flower_type"] = string.IsNullOrEmpty(rawValues.GetValueOrDefault("flower_type")),
+            ["choose_flowers_provided_by"] = string.IsNullOrEmpty(rawValues.GetValueOrDefault("flowers_provided_by")),
         };
 
-        // Body ranges to delete for conditional sections that don't apply. A section runs from the start
-        // of the paragraph holding {{if:x}} to the end of the next paragraph holding {{endif:x}}.
+        // Body ranges to delete for conditional sections that don't apply.
+        //  - {{if:x}} and {{endif:x}} in different paragraphs: from the start of the {{if}} paragraph to the
+        //    end of the {{endif}} paragraph (whole paragraphs, tables between them included).
+        //  - both in the same paragraph: just the markers and the text between them (inline), unless they
+        //    wrap the whole paragraph, which is then removed like a multi-paragraph section.
         public static List<(int Start, int End)> FindRemovedSections(Document doc, Dictionary<string, bool> conditions)
         {
             var removed = new List<(int Start, int End)>();
             var body = doc.Body?.Content ?? [];
-            var open = new Dictionary<string, int>();   // condition → start index of its {{if}} paragraph
+            var open = new Dictionary<string, (int Element, int ParaStart, int TokenStart)>();
             for (int e = 0; e < body.Count; e++)
             {
                 if (body[e].Paragraph == null || body[e].StartIndex == null || body[e].EndIndex == null) continue;
-                foreach (Match m in TokenRegex.Matches(ElementsText([body[e]])))
+                int baseIndex = body[e].StartIndex!.Value;
+                var text = ParagraphText(body[e].Paragraph);
+                foreach (Match m in TokenRegex.Matches(text))
                 {
                     var token = Normalize(m.Groups[1].Value);
                     var name = ConditionName(token);
                     if (name == null || !conditions.ContainsKey(name)) continue;
                     if (token.StartsWith("if:"))
                     {
-                        open.TryAdd(name, body[e].StartIndex!.Value);
+                        open.TryAdd(name, (e, baseIndex, baseIndex + m.Index));
                     }
                     else if (open.Remove(name, out var start) && !conditions[name])
                     {
-                        // The body's last paragraph, and one right before a table, must keep its newline
-                        bool keepNewline = e == body.Count - 1 || body[e + 1].Table != null;
-                        removed.Add((start, body[e].EndIndex!.Value - (keepNewline ? 1 : 0)));
+                        // Same paragraph, but the markers wrap all of it: remove the paragraph itself
+                        bool wrapsParagraph = start.TokenStart == baseIndex && m.Index + m.Length == text.TrimEnd('\n').Length;
+                        if (start.Element == e && !wrapsParagraph)
+                        {
+                            removed.Add((start.TokenStart, baseIndex + m.Index + m.Length));
+                        }
+                        else
+                        {
+                            // The body's last paragraph, and one right before a table, must keep its newline
+                            bool keepNewline = e == body.Count - 1 || body[e + 1].Table != null;
+                            removed.Add((start.ParaStart, body[e].EndIndex!.Value - (keepNewline ? 1 : 0)));
+                        }
                     }
                 }
             }
-            return removed;
+            // A removal inside another (e.g. a "(Choose ONE…)" prompt inside a removed flowers block) is covered by it
+            return removed.Where(r => !removed.Any(o => o != r && o.Start <= r.Start && r.End <= o.End)).ToList();
+        }
+
+        // Paragraph text with one placeholder character per index of each non-text element (inline
+        // objects such as client boxes become \uFFFC), so string positions map to document indices.
+        private static string ParagraphText(Paragraph para)
+        {
+            var sb = new StringBuilder();
+            foreach (var pe in para.Elements ?? [])
+            {
+                if (pe.TextRun != null) sb.Append(pe.TextRun.Content);
+                else sb.Append(pe.InlineObjectElement != null ? '\uFFFC' : '\uFFFD',
+                    Math.Max(1, (pe.EndIndex ?? 0) - (pe.StartIndex ?? 0)));
+            }
+            return sb.ToString();
         }
 
         // ── Values ────────────────────────────────────────────────────────────
@@ -562,15 +599,7 @@ namespace CCCInventory.Services
                 if (para == null || body[e].StartIndex == null || body[e].EndIndex == null) continue;
                 int baseIndex = body[e].StartIndex!.Value;
 
-                // Paragraph text with one placeholder character per index of each non-text element
-                var sb = new StringBuilder();
-                foreach (var pe in para.Elements ?? [])
-                {
-                    if (pe.TextRun != null) sb.Append(pe.TextRun.Content);
-                    else sb.Append(pe.InlineObjectElement != null ? Box : '\uFFFD',
-                        Math.Max(1, (pe.EndIndex ?? 0) - (pe.StartIndex ?? 0)));
-                }
-                var text = sb.ToString();
+                var text = ParagraphText(para);
                 var tokens = TokenRegex.Matches(text).Cast<Match>().ToList();
 
                 var mark = tokens.FirstOrDefault(m => Normalize(m.Groups[1].Value).StartsWith("mark:"));

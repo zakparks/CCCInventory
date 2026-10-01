@@ -68,8 +68,9 @@ and add tokens to the copy. When going live, add the same tokens to the producti
 promote the dev copy) and switch the ID.
 
 The dev copy exists ([9999 - Zak's Development Template - Wedding contract](https://docs.google.com/document/d/1Idvu4Sh-i23018TFUaFIpJT8MhAi5_m8uc_suS7eEUc/edit))
-with every token below already placed, and its ID is set in `appsettings.Development.json`. A filled
-example made from seed order 35 is next to it ("9999 - Zak's Development SAMPLE - …").
+with every token below already placed, and its ID is set in `appsettings.Development.json`. Filled
+examples made from the seed orders are next to it ("9999 - Zak's Development SAMPLE - …"): Grace Miller
+(delivery, florist) and Chloe Bennett (pickup, kitchen cakes, cupcakes).
 
 Type tokens directly into the document text in place of the `______` blanks. Token names are
 case-insensitive, and spaces inside the braces are fine (`{{ event_date }}`). Unknown tokens are left
@@ -144,11 +145,18 @@ line stays as-is for the client. Values match either the stored option (`Live`, 
 
 ### Conditional sections (`{{if:…}}` / `{{endif:…}}`)
 
-Wrap a part of the template in `{{if:<name>}}` … `{{endif:<name>}}`. When the condition doesn't apply to the
-order, everything from the paragraph holding `{{if:…}}` through the paragraph holding `{{endif:…}}` is deleted;
-when it does, only the two markers are removed. Put the markers inline (e.g. at the start of the section
-heading and at the end of its "Initial:" line), or put `{{if:…}}` on the blank line above a section so the
-separator goes with it.
+Wrap a part of the template in `{{if:<name>}}` … `{{endif:<name>}}`. When the condition applies, only the two
+markers are removed; when it doesn't, the wrapped part is deleted:
+
+- **Markers in different paragraphs**: everything from the paragraph holding `{{if:…}}` through the paragraph
+  holding `{{endif:…}}` is deleted (tables in between included). Put the markers inline (e.g. at the start of the
+  section heading and at the end of its "Initial:" line), or put `{{if:…}}` on the blank line above a section so
+  the separator goes with it.
+- **Both markers in one paragraph**: only the markers and the text between them are deleted, e.g.
+  `Which color would you like?{{if:choose_board_color}} (Choose ONE option below){{endif:choose_board_color}}`.
+  If the markers wrap the whole paragraph, the paragraph itself is deleted.
+- Sections can nest (the `(Choose ONE…)` prompts sit inside the `flowers` block); a deletion inside a larger
+  deleted section is simply covered by it.
 
 | Name | Applies when |
 |---|---|
@@ -158,6 +166,25 @@ separator goes with it.
 | `flowers` | Flowers/greenery is Yes (or not answered yet) |
 | `kitchen_cakes` | The order has sheet (kitchen) cakes |
 | `cupcakes` | The order has cupcakes |
+| `choose_board_color` | No board color chosen yet (keeps the "(Choose ONE option below)" prompt) |
+| `choose_flower_type` | No flower type chosen yet |
+| `choose_flowers_provided_by` | No "provided by" answer yet |
+
+### Layout
+
+The dev template is formatted so generated contracts paginate cleanly:
+
+- Each section (heading → "Initial:") has *Keep with next* on every line before its Initial line, so a section
+  moves to the next page as a whole instead of splitting (the long Toppers and Pickup paragraphs are allowed to break).
+- "CAKE DESCRIPTION:" and "Total number of servings for entire order" start new pages (*Page break before*), so
+  the flavor tables and the cost/signature page always start at the top of a page.
+- Table rows can't split across pages (*Prevent row overflow*), and the label lines above each table stay with it.
+  Google Docs can't keep a whole table on one page; if a table runs over, pin its header row
+  (*Table properties → Rows → Pin header row*) so the header repeats on the next page.
+- Cost breakdown is a two-column table (labels | values).
+
+When editing the template, keep these paragraph settings (Format → Line & paragraph spacing → *Keep with next* /
+*Add page break before*) on the corresponding lines.
 
 ### Client boxes next to tokens
 
