@@ -32,18 +32,30 @@ The existing workflow (send from Google Docs with eSignature, signed PDF comes b
      `dotnet user-secrets set "Google:ClientSecret" "<secret>"` (run in `CCCInventory/`).
    - Production: environment variables `Google__ClientId` and `Google__ClientSecret`.
 
-## 2. App configuration (`Google` section)
+## 2. App configuration and connecting
+
+### Settings (the `"Google"` block in `CCCInventory/appsettings*.json`)
 
 | Key | Meaning |
 |---|---|
-| `Google:ClientId` / `Google:ClientSecret` | OAuth client from step 1 (secrets / env vars only) |
-| `Google:WeddingContractTemplateId` | The template Google Doc ID: the part of its URL between `/d/` and `/edit` |
-| `Google:WeddingContractFolderId` | *Optional.* Folder for generated contracts; defaults to the template's own folder |
-| `Google:RedirectUri` | *Optional.* Defaults to `https://<host>/api/google/callback` of the request; set it if the app sits behind a proxy that changes the scheme or host (e.g. the Cloudflare Tunnel) |
+| `Google:ClientId` / `Google:ClientSecret` | OAuth client from step 1. Set via user-secrets (dev) or env vars (production), never in the JSON files |
+| `Google:WeddingContractTemplateId` | The template Google Doc ID: the part of its URL between `/d/` and `/edit`. Already set to the dev template in `appsettings.Development.json` |
+| `Google:WeddingContractFolderId` | *Optional, leave blank.* Folder for generated contracts; defaults to the template's own folder |
+| `Google:RedirectUri` | *Optional, leave blank.* Defaults to `https://<host>/api/google/callback` of the request; set it only if the app sits behind a proxy that changes the scheme or host (e.g. the Cloudflare Tunnel) |
 
-Then on **Management → Google Integration**, click **Connect Google Account** and sign in as the
-**bakery account that owns the Wedding Contracts folder and template**. Use **Check Contract Template**
-to confirm every token in the template is recognized.
+For local testing nothing in the JSON needs editing once the user-secrets from step 1 are set.
+
+### Connect the bakery Google account (in the running CCCInventory app)
+
+1. Run the app and log in.
+2. Click **Management** in the top nav bar, scroll to the bottom, and expand
+   **Google Integration (Wedding Contracts)**.
+3. Click **Connect Google Account** and sign in as the **bakery account that owns the Wedding Contracts
+   folder and template** (info@canonsburgcakecompany.com). Approve the permissions; on the
+   "unverified app" warning choose *Advanced → continue*.
+4. You return to Management with "Google account connected." Click **Check Contract Template**; it
+   should report every token recognized.
+5. Open a wedding order (ring icon in All Orders) and click **Generate Contract** in Wedding Details.
 
 ## 3. Preparing the template
 
