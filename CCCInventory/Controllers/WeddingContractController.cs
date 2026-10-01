@@ -62,6 +62,12 @@ namespace CCCInventory.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
+            catch (Google.Apis.Auth.OAuth2.Responses.TokenResponseException ex)
+            {
+                // The saved Google login was revoked or expired (in OAuth "Testing" mode, after 7 days)
+                _logger.LogWarning(ex, "Google token refresh failed generating contract for order {OrderNumber}", orderNumber);
+                return BadRequest(new { message = "The Google connection has expired. Reconnect Google on the Management page and try again." });
+            }
             catch (Google.GoogleApiException ex)
             {
                 _logger.LogError(ex, "Google API error generating contract for order {OrderNumber}", orderNumber);
