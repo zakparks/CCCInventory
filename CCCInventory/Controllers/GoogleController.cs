@@ -28,10 +28,6 @@ namespace CCCInventory.Controllers
             _logger = logger;
         }
 
-        private string RedirectUri =>
-            !string.IsNullOrWhiteSpace(_google.Settings.RedirectUri)
-                ? _google.Settings.RedirectUri!
-                : $"{Request.Scheme}://{Request.Host}/api/google/callback";
 
         [HttpGet("status")]
         public async Task<IActionResult> Status(CancellationToken ct)
@@ -48,9 +44,11 @@ namespace CCCInventory.Controllers
 
         private record PendingAuth(string RedirectUri, string ReturnOrigin);
 
-        // returnOrigin: the SPA's window.location.origin, so the callback can send the browser back to
-        // the app (in development the SPA and API run on different ports). Only the API's own hostname
-        // is accepted, so this can't be used as an open redirect.
+        // returnOrigin: the SPA's window.location.origin. Unless Google:RedirectUri is configured, the
+        // callback URL is built from it, because the browser's address is what Google redirects to: the
+        // backend's own view of the request can differ (behind the Angular dev proxy it sees https on the
+        // dev server's port, which serves plain http). Only the API's own hostname is accepted, so this
+        // can't be used as an open redirect.
         [HttpGet("authorize-url")]
         public IActionResult AuthorizeUrl([FromQuery] string? returnOrigin)
         {
@@ -64,7 +62,10 @@ namespace CCCInventory.Controllers
                 origin = o.GetLeftPart(UriPartial.Authority);
 
             var state = Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
-            var redirectUri = RedirectUri;
+            var redirectUri =
+                !string.IsNullOrWhiteSpace(_google.Settings.RedirectUri) ? _google.Settings.RedirectUri!
+                : origin != "" ? $"{origin}/api/google/callback"
+                : $"{Request.Scheme}://{Request.Host}/api/google/callback";
             _cache.Set(StateCachePrefix + state, new PendingAuth(redirectUri, origin), TimeSpan.FromMinutes(10));
             return Ok(new { url = _google.BuildAuthorizationUrl(redirectUri, state) });
         }

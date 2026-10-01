@@ -25,8 +25,9 @@ The existing workflow (send from Google Docs with eSignature, signed PDF comes b
      *Advanced → continue*). No verification is needed for the bakery's own account.
 4. **APIs & Services → Credentials → Create credentials → OAuth client ID**, type **Web application**.
    Add **Authorized redirect URIs**:
-   - Development: `https://localhost:44401/api/google/callback` (the Angular dev server, which is what
-     the browser normally uses) **and** `https://localhost:7005/api/google/callback` (backend opened directly)
+   - Development: `http://localhost:44401/api/google/callback` (the Angular dev server; note **http**,
+     not https) and `https://localhost:7005/api/google/callback` (backend opened directly). The app builds
+     the callback from the address in the browser's address bar, so register whichever you use.
    - Production: `https://orders.canonsburgcakecompany.com/api/google/callback`
 5. Give the app the client ID/secret. Never commit them:
    - Development: `dotnet user-secrets set "Google:ClientId" "<id>"` and
@@ -42,7 +43,7 @@ The existing workflow (send from Google Docs with eSignature, signed PDF comes b
 | `Google:ClientId` / `Google:ClientSecret` | OAuth client from step 1. Set via user-secrets (dev) or env vars (production), never in the JSON files |
 | `Google:WeddingContractTemplateId` | The template Google Doc ID: the part of its URL between `/d/` and `/edit`. Already set to the dev template in `appsettings.Development.json` |
 | `Google:WeddingContractFolderId` | *Optional, leave blank.* Folder for generated contracts; defaults to the template's own folder |
-| `Google:RedirectUri` | *Optional, leave blank.* Defaults to `https://<host>/api/google/callback` of the request; set it only if the app sits behind a proxy that changes the scheme or host (e.g. the Cloudflare Tunnel) |
+| `Google:RedirectUri` | *Optional, leave blank.* Defaults to `<address in the browser>/api/google/callback`; set it only to force a specific callback URL |
 
 For local testing nothing in the JSON needs editing once the user-secrets from step 1 are set.
 

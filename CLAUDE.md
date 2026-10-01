@@ -93,7 +93,7 @@ Public internet ──HTTPS──► Cloudflare edge ──► orders.canonsburg
 
 **Wedding contract / Google OAuth checks at deployment** (see `docs/wedding-contract-template.md`):
 - OAuth consent screen **Publishing status must be "In production"**, not "Testing" — in Testing, Google expires the refresh token after 7 days and contract generation silently stops (users see an "unverified app" warning on connect; that's expected).
-- Add `https://orders.canonsburgcakecompany.com/api/google/callback` as an Authorized redirect URI; set `Google__ClientId` / `Google__ClientSecret` env vars; set `Google:RedirectUri` explicitly if the tunnel makes the app see `http` instead of `https`.
+- Add `https://orders.canonsburgcakecompany.com/api/google/callback` as an Authorized redirect URI; set `Google__ClientId` / `Google__ClientSecret` env vars; the callback URL is built from the browser's address, so `Google:RedirectUri` normally stays blank.
 - Point `Google:WeddingContractTemplateId` at the **production** template (tokens added), not `9999 - Zak's Development Template - Wedding contract`.
 - Reconnect Google on Management as the bakery account and run **Check Contract Template**.
 
