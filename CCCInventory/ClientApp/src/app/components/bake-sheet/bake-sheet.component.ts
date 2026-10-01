@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BakeSheetService, BakeSheetResponse } from '../../services/bake-sheet.service';
+import { WeddingIconComponent } from '../shared/wedding-icon/wedding-icon.component';
 
 interface BakeRow {
   orderNumber: number;
@@ -13,7 +14,7 @@ interface BakeRow {
 @Component({
   selector: 'app-bake-sheet',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, WeddingIconComponent],
   templateUrl: './bake-sheet.component.html',
   styleUrls: ['./bake-sheet.component.css']
 })
@@ -28,6 +29,7 @@ export class BakeSheetComponent implements OnInit {
   pupcakeRows: BakeRow[] = [];
   otherRows: BakeRow[] = [];
   orderColorMap = new Map<number, string>();
+  weddingOrders = new Set<number>();
 
   // Golden-angle hue rotation: guarantees visually distinct colors with no repeats
   private orderColor(index: number): string {
@@ -98,6 +100,7 @@ export class BakeSheetComponent implements OnInit {
   // ── Row generation ──────────────────────────────────────────────────────
 
   private processData() {
+    this.weddingOrders = new Set((this.data?.orders ?? []).filter(o => o.isWedding).map(o => o.orderNumber!));
     if (!this.data) {
       this.bakeRows = this.cookieRows = this.pupcakeRows = this.otherRows = [];
       this.orderColorMap = new Map();

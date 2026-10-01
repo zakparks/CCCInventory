@@ -41,5 +41,7 @@ namespace CCCInventory
         public DateTime DateOrderPlaced { get; set; }
         public bool? PaidInFull { get; set; }
         public int? CustomerId { get; set; }
+        public bool IsWedding { get; set; }
+        public WeddingDetails? WeddingDetails { get; set; }
     }
 }

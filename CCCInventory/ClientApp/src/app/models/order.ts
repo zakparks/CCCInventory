@@ -3,6 +3,7 @@ import { Cookie } from "./cookie";
 import { Cupcake } from "./cupcake";
 import { OtherItem } from "./other-item";
 import { Pupcake } from "./pupcake";
+import { WeddingDetails } from "./wedding-details";
 
 export class Order {
   orderNumber: number | undefined;
@@ -41,4 +42,6 @@ export class Order {
   flavorUpgrade?: number;
   lookbookPrice?: number;
   customerId?: number;
+  isWedding?: boolean;
+  weddingDetails?: WeddingDetails | null;
 }

@@ -26,6 +26,10 @@ namespace CCCInventory.Data
         // Customers
         public DbSet<Customer> Customers => Set<Customer>();
 
+        // Weddings
+        public DbSet<WeddingDetails> WeddingDetails => Set<WeddingDetails>();
+        public DbSet<GoogleToken> GoogleTokens => Set<GoogleToken>();
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -48,6 +52,12 @@ namespace CCCInventory.Data
                 .WithOne()
                 .HasForeignKey(o => o.CustomerId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<Order>()
+                .HasOne(o => o.WeddingDetails)
+                .WithOne(w => w.Order)
+                .HasForeignKey<WeddingDetails>(w => w.OrderNumber)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

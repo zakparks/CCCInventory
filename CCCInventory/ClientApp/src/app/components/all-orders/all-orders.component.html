@@ -67,7 +67,7 @@
   <tbody>
     @for (order of displayOrders; track order.orderNumber) {
       <tr>
-        <th scope="row">{{ order.orderNumber }}</th>
+        <th scope="row" style="white-space:nowrap;">{{ order.orderNumber }} @if (order.isWedding) { <app-wedding-icon /> }</th>
         <td style="white-space:nowrap;">{{ order.orderDateTime | date:'M/d/yy' }}</td>
         <td><ngb-highlight [result]="order.custName ?? ''" [term]="filter.value" /></td>
         <td><ngb-highlight [result]="order.details ?? ''" [term]="filter.value" /></td>

@@ -15,6 +15,13 @@ code {
   border-color: #1861ac;
 }
 
+/* (?) help badge next to a field; hover/focus shows an ngbTooltip */
+.help-tip {
+  cursor: help;
+  font-weight: 600;
+  color: #6c757d;
+}
+
 /* ── Print / PDF ────────────────────────────────────────────────────── */
 @page {
   margin: 0.4cm 0.6cm;

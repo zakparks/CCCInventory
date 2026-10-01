@@ -1,4 +1,4 @@
-<h1>Order Form</h1>
+<h1>Order Form @if (isWedding) { <app-wedding-icon /> }</h1>
 <hr />
 
 <!-- Cancellation Reason banner (shown when order is archived) -->
@@ -36,18 +36,24 @@
       </div>
       <div class="mb-2 form-floating">
         <input formControlName="custEmail" type="email" id="custEmail" class="form-control"
-          [ngClass]="{'is-invalid': isFieldIncomplete('contact')}" />
-        <label for="custEmail">Customer Email</label>
+          [ngClass]="{'is-invalid': isFieldIncomplete('contact') || isFieldIncomplete('w_custEmail')}" />
+        <label for="custEmail">{{ isWedding ? 'Email *' : 'Customer Email' }}</label>
+      </div>
+      <div class="mb-2 input-group has-validation">
+        <div class="form-floating">
+          <input formControlName="orderDate" type="date" id="orderDate" class="form-control"
+            [ngClass]="{'is-invalid': isInvalid('orderDate') || isFieldIncomplete('orderDate')}" />
+          <label for="orderDate">{{ orderDateLabel }}</label>
+          <div class="invalid-feedback">Date is required.</div>
+        </div>
+        @if (isWedding) {
+          <span class="input-group-text help-tip" tabindex="0" [ngbTooltip]="dateHelpText" container="body">?</span>
+        }
       </div>
       <div class="mb-2 form-floating">
-        <input formControlName="orderDate" type="date" id="orderDate" class="form-control"
-          [ngClass]="{'is-invalid': isInvalid('orderDate') || isFieldIncomplete('orderDate')}" />
-        <label for="orderDate">Delivery Date *</label>
-        <div class="invalid-feedback">Date is required.</div>
-      </div>
-      <div class="mb-2 form-floating">
-        <input formControlName="deliveryLocation" type="text" id="deliveryLocation" class="form-control" />
-        <label for="deliveryLocation">Delivery/Pickup Location</label>
+        <input formControlName="deliveryLocation" type="text" id="deliveryLocation" class="form-control"
+          [ngClass]="{'is-invalid': isFieldIncomplete('w_deliveryLocation')}" />
+        <label for="deliveryLocation">{{ isWedding ? (orderTypeValue === 'Pickup' ? 'Pickup Location' : 'Delivery Address *') : 'Delivery/Pickup Location' }}</label>
       </div>
       <div class="mb-2 form-floating">
         <input type="text" formControlName="secondaryName" id="secondaryName" class="form-control" />
@@ -63,7 +69,7 @@
             [ngClass]="{'is-invalid': isInvalid('custName') || isFieldIncomplete('custName')}"
             autocomplete="off"
             (blur)="closeCustomerDropdown()" />
-          <label for="custName">Customer Name *</label>
+          <label for="custName">{{ isWedding ? 'Bride/Groom Name *' : 'Customer Name *' }}</label>
           <div class="invalid-feedback">Customer name is required.</div>
         </div>
         @if (showCustomerDropdown && customerSuggestions.length > 0) {
@@ -83,12 +89,12 @@
         <input formControlName="custPhone" type="tel" maxlength="12" (input)="onTelInput($event, 'custPhone')"
           id="custPhone" class="form-control"
           [ngClass]="{'is-invalid': isFieldIncomplete('contact')}" />
-        <label for="custPhone">Customer Phone</label>
+        <label for="custPhone">{{ isWedding ? 'Bride/Groom Phone' : 'Customer Phone' }}</label>
         <div class="invalid-feedback">At least one of phone or email is required.</div>
       </div>
       <div class="mb-2 form-floating">
         <input formControlName="orderTime" type="time" id="orderTime" class="form-control" />
-        <label for="orderTime">Delivery Time</label>
+        <label for="orderTime">{{ orderTimeLabel }}</label>
       </div>
       <div class="mb-2 form-floating">
         <input type="text" formControlName="initialContact" id="initialContact" class="form-control" />
@@ -133,6 +139,10 @@
     }
     <div class="vr"></div>
     <div class="form-check form-switch">
+      <input formControlName="isWedding" class="form-check-input" type="checkbox" role="switch" id="isWeddingSwitch">
+      <label class="form-check-label" for="isWeddingSwitch">Wedding Order</label>
+    </div>
+    <div class="form-check form-switch">
       <input formControlName="contractSent" class="form-check-input" type="checkbox" role="switch" id="contractSentSwitch">
       <label class="form-check-label" for="contractSentSwitch">Contract Sent</label>
     </div>
@@ -149,6 +159,279 @@
       <label class="form-check-label" for="isReadyForPickupSwitch">Ready for Pickup</label>
     </div>
   </div>
+
+  <!-- ── Wedding Details (wedding mode only) ─────────────────── -->
+  @if (isWedding) {
+    <hr />
+    <div class="d-flex align-items-center gap-2">
+      <h5 class="mb-0"><app-wedding-icon /> Wedding Details</h5>
+    </div>
+    <div class="row g-2" formGroupName="wedding">
+
+      <!-- Event -->
+      <div class="col-md-2">
+        <div class="input-group has-validation">
+          <div class="form-floating">
+            <input formControlName="eventDate" type="date" id="w_eventDate" class="form-control"
+              [ngClass]="{'is-invalid': isFieldIncomplete('w_eventDate')}" />
+            <label for="w_eventDate">Event Date *</label>
+          </div>
+          <span class="input-group-text help-tip" tabindex="0" [ngbTooltip]="dateHelpText" container="body">?</span>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="form-floating">
+          <input formControlName="receptionLocation" type="text" id="w_receptionLocation" class="form-control"
+            [ngClass]="{'is-invalid': isFieldIncomplete('w_receptionLocation')}" />
+          <label for="w_receptionLocation">Reception Location *</label>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="form-floating">
+          <input formControlName="receptionTime" type="time" id="w_receptionTime" class="form-control" />
+          <label for="w_receptionTime">Reception Start</label>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="form-floating">
+          <input formControlName="ceremonyTime" type="time" id="w_ceremonyTime" class="form-control" />
+          <label for="w_ceremonyTime">Ceremony Start</label>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="form-floating">
+          <select formControlName="ceremonySameLocation" id="w_ceremonySame" class="form-select">
+            <option [ngValue]="null"></option>
+            <option [ngValue]="true">Yes</option>
+            <option [ngValue]="false">No</option>
+          </select>
+          <label for="w_ceremonySame">Ceremony at Reception?</label>
+        </div>
+      </div>
+
+      <!-- Contacts / contract -->
+      <div class="col-md-3">
+        <div class="form-floating">
+          <input formControlName="partner2Name" type="text" id="w_partner2Name" class="form-control"
+            [ngClass]="{'is-invalid': isFieldIncomplete('w_partner2Name')}" />
+          <label for="w_partner2Name">Bride/Groom #2 Name *</label>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="form-floating">
+          <input formControlName="partner2Phone" type="tel" maxlength="12" id="w_partner2Phone" class="form-control"
+            (input)="onTelInput($event, 'wedding.partner2Phone')"
+            [ngClass]="{'is-invalid': isFieldIncomplete('w_partner2Phone')}" />
+          <label for="w_partner2Phone">Bride/Groom #2 Phone *</label>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="form-floating">
+          <input formControlName="dayOfContactTitle" type="text" id="w_dayOfContactTitle" class="form-control"
+            title="Wedding Planner, Maid of Honor, Best Man, Mother of the Bride…" />
+          <label for="w_dayOfContactTitle">Day-of Contact Title</label>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="form-floating">
+          <input formControlName="contractReturnByDate" type="date" id="w_contractReturnByDate" class="form-control"
+            [ngClass]="{'is-invalid': isFieldIncomplete('w_contractReturnByDate')}" />
+          <label for="w_contractReturnByDate">Contract Return By *</label>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="form-floating">
+          <input formControlName="totalServings" type="number" min="0" id="w_totalServings" class="form-control"
+            [ngClass]="{'is-invalid': isFieldIncomplete('w_totalServings')}" />
+          <label for="w_totalServings">Total Servings *</label>
+        </div>
+      </div>
+
+      <!-- Delivery or pickup specifics -->
+      @if (orderTypeValue === 'Delivery') {
+        <div class="col-md-2">
+          <div class="form-floating">
+            <input formControlName="deliveryWindowEnd" type="time" id="w_deliveryWindowEnd" class="form-control" />
+            <label for="w_deliveryWindowEnd">Delivery Window End</label>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-floating">
+            <input formControlName="venueContactName" type="text" id="w_venueContactName" class="form-control" />
+            <label for="w_venueContactName">Venue Contact Name</label>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <div class="form-floating">
+            <input formControlName="venueContactPhone" type="tel" maxlength="12" id="w_venueContactPhone" class="form-control"
+              (input)="onTelInput($event, 'wedding.venueContactPhone')" />
+            <label for="w_venueContactPhone">Venue Contact Phone</label>
+          </div>
+        </div>
+      }
+      @if (orderTypeValue === 'Pickup') {
+        <div class="col-md-3">
+          <div class="form-floating">
+            <input formControlName="pickupPersonName" type="text" id="w_pickupPersonName" class="form-control" />
+            <label for="w_pickupPersonName">Person Picking Up</label>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <div class="form-floating">
+            <input formControlName="pickupPersonPhone" type="tel" maxlength="12" id="w_pickupPersonPhone" class="form-control"
+              (input)="onTelInput($event, 'wedding.pickupPersonPhone')" />
+            <label for="w_pickupPersonPhone">Pickup Person Phone</label>
+          </div>
+        </div>
+      }
+
+      <!-- Display & flowers (client may also answer these on the contract) -->
+      <div class="col-12 mt-3">
+        <h6 class="mb-0">Display &amp; Flowers
+          <span class="text-muted small fw-normal">(optional — the client can also answer these on the contract)</span>
+        </h6>
+      </div>
+      <div class="col-md-2">
+        <div class="form-floating">
+          <select formControlName="cakeBoardColor" id="w_cakeBoardColor" class="form-select">
+            <option value=""></option>
+            @for (c of boardColors; track c) { <option [value]="c">{{ c }}</option> }
+          </select>
+          <label for="w_cakeBoardColor">Cake Board Color</label>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="form-floating">
+          <select formControlName="cakeTopper" id="w_cakeTopper" class="form-select">
+            <option [ngValue]="null"></option>
+            <option [ngValue]="true">Yes</option>
+            <option [ngValue]="false">No</option>
+          </select>
+          <label for="w_cakeTopper">Cake Topper?</label>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="form-floating">
+          <select formControlName="hasFlowers" id="w_hasFlowers" class="form-select">
+            <option [ngValue]="null"></option>
+            <option [ngValue]="true">Yes</option>
+            <option [ngValue]="false">No</option>
+          </select>
+          <label for="w_hasFlowers">Flowers/Greenery?</label>
+        </div>
+      </div>
+      @if (weddingGroup.get('hasFlowers')?.value === true) {
+        <div class="col-md-3">
+          <div class="form-floating">
+            <select formControlName="flowerType" id="w_flowerType" class="form-select">
+              <option value=""></option>
+              @for (f of flowerTypes; track f.value) { <option [value]="f.value">{{ f.label }}</option> }
+            </select>
+            <label for="w_flowerType">Flower Type</label>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-floating">
+            <select formControlName="flowersProvidedBy" id="w_flowersProvidedBy" class="form-select">
+              <option value=""></option>
+              @for (f of flowerProviders; track f.value) { <option [value]="f.value">{{ f.label }}</option> }
+            </select>
+            <label for="w_flowersProvidedBy">Flowers Provided By</label>
+          </div>
+        </div>
+        @if (weddingGroup.get('flowersProvidedBy')?.value === 'Florist') {
+          <div class="col-md-3">
+            <div class="form-floating">
+              <input formControlName="floristName" type="text" id="w_floristName" class="form-control" />
+              <label for="w_floristName">Florist</label>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <div class="form-floating">
+              <input formControlName="floristPhone" type="tel" maxlength="12" id="w_floristPhone" class="form-control"
+                (input)="onTelInput($event, 'wedding.floristPhone')" />
+              <label for="w_floristPhone">Florist Phone</label>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <div class="form-floating">
+              <input formControlName="floristDeliveryTime" type="time" id="w_floristDeliveryTime" class="form-control" />
+              <label for="w_floristDeliveryTime">Florist Arrives</label>
+            </div>
+          </div>
+        }
+      }
+
+      <!-- Cake description (contract text) -->
+      <div class="col-12 mt-3">
+        <h6 class="mb-0">Contract Descriptions</h6>
+      </div>
+      <div class="col-md-4">
+        <div class="form-floating">
+          <textarea formControlName="mainCakeFlavorDescription" id="w_mainFlavor" class="form-control" style="height: 80px"></textarea>
+          <label for="w_mainFlavor">Main Cake — Flavors</label>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="form-floating">
+          <textarea formControlName="mainCakeDesignDescription" id="w_mainDesign" class="form-control" style="height: 80px"></textarea>
+          <label for="w_mainDesign">Main Cake — Design</label>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="form-floating">
+          <textarea formControlName="kitchenCakeFlavorDescription" id="w_kitchenFlavor" class="form-control" style="height: 80px"></textarea>
+          <label for="w_kitchenFlavor">Kitchen Cakes — Flavors</label>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="form-floating">
+          <textarea formControlName="cupcakeFlavorDescription" id="w_cupcakeFlavor" class="form-control" style="height: 80px"></textarea>
+          <label for="w_cupcakeFlavor">Cupcakes — Flavors</label>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="form-floating">
+          <textarea formControlName="cupcakeDesignDescription" id="w_cupcakeDesign" class="form-control" style="height: 80px"></textarea>
+          <label for="w_cupcakeDesign">Cupcakes — Design</label>
+        </div>
+      </div>
+
+      <!-- Contract -->
+      <div class="col-12 mt-3 d-flex flex-wrap align-items-center gap-3">
+        <button type="button" class="btn btn-outline-primary"
+          [disabled]="generatingContract || !googleStatus?.connected || !googleStatus?.templateConfigured"
+          (click)="onGenerateContractClicked()">
+          @if (generatingContract) {
+            <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span> Generating…
+          } @else {
+            Generate Contract
+          }
+        </button>
+        @if (contract) {
+          <span>
+            Current contract:
+            <a [href]="contract.url" target="_blank" rel="noopener">{{ contract.name }}</a>
+            @if (contract.generatedAt) {
+              <span class="text-muted small ms-1">({{ contract.generatedAt | date:'M/d/yy h:mm a' }})</span>
+            }
+          </span>
+        }
+        @if (googleStatus && !googleStatus.connected) {
+          <span class="text-muted small">Connect Google on the <a routerLink="/management">Management</a> page to generate contracts.</span>
+        } @else if (googleStatus && !googleStatus.templateConfigured) {
+          <span class="text-muted small">No contract template is configured.</span>
+        }
+      </div>
+      @if (contractWarnings.length > 0) {
+        <div class="col-12">
+          <div class="alert alert-warning py-2 mb-0 small">
+            @for (w of contractWarnings; track $index) { <div>{{ w }}</div> }
+          </div>
+        </div>
+      }
+    </div>
+  }
 
   <!-- Add to order (below toggles) -->
   <hr />
@@ -757,6 +1040,32 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-danger" (click)="confirmArchive()">Archive</button>
           <button type="button" class="btn btn-secondary" (click)="cancelArchiveModal()">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Contract overwrite / revision modal -->
+@if (showContractModal) {
+  <div class="modal-backdrop show" style="opacity: 0.5;"></div>
+  <div class="modal d-block" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">A contract already exists</h5>
+        </div>
+        <div class="modal-body">
+          <p class="mb-2">This order already has <strong>{{ contract?.name }}</strong>.</p>
+          <ul class="mb-0 small">
+            <li><strong>Overwrite</strong> creates a fresh contract from the current order and moves the old one to the Google Drive trash.</li>
+            <li><strong>New Revision</strong> keeps the old contract and adds a new one named "… - REVISED - …".</li>
+          </ul>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger" (click)="generateContract('overwrite')">Overwrite</button>
+          <button type="button" class="btn btn-primary" (click)="generateContract('revision')">New Revision</button>
+          <button type="button" class="btn btn-secondary" (click)="cancelContractModal()">Cancel</button>
         </div>
       </div>
     </div>

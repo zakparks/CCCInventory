@@ -134,7 +134,7 @@
       <tbody>
         @for (order of customer.orders ?? []; track order.orderNumber) {
           <tr style="cursor:pointer;" (click)="editOrder(order.orderNumber)">
-            <td>{{ order.orderNumber }}</td>
+            <td style="white-space:nowrap;">{{ order.orderNumber }} @if (order.isWedding) { <app-wedding-icon /> }</td>
             <td style="white-space:nowrap;">{{ order.orderDateTime | date:'M/d/yy' }}</td>
             <td>{{ order.title ?? order.details ?? '' }}</td>
             <td><span [class]="getStatusClass(order)">{{ getOrderStatus(order) }}</span></td>

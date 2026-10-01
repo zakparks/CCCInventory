@@ -3,13 +3,14 @@ import { CommonModule } from '@angular/common';
 import { NavigationExtras, Router, ActivatedRoute } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { NgbHighlight } from '@ng-bootstrap/ng-bootstrap';
+import { WeddingIconComponent } from '../shared/wedding-icon/wedding-icon.component';
 import { OrderService } from '../../services/order.service';
 import { Order } from '../../models/order';
 
 @Component({
   selector: 'app-all-orders',
   standalone: true,
-  imports: [ReactiveFormsModule, NgbHighlight, CommonModule],
+  imports: [ReactiveFormsModule, NgbHighlight, CommonModule, WeddingIconComponent],
   templateUrl: './all-orders.component.html'
 })
 export class AllOrdersComponent implements OnInit {
