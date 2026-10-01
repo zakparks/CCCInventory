@@ -91,8 +91,11 @@ export class TimeInputComponent implements ControlValueAccessor {
   }
 
   pick(hour: number | null, minute: string, pm: boolean) {
-    const h12 = hour ?? 12;
-    const h24 = (h12 % 12) + (pm ? 12 : 0);
+    this.pickMinute = minute;
+    this.pickPm = pm;
+    // Minute / AM-PM clicks before an hour is chosen only preselect; no time is set until an hour is picked
+    if (hour === null) return;
+    const h24 = (hour % 12) + (pm ? 12 : 0);
     this.setValue(`${String(h24).padStart(2, '0')}:${minute}`, true);
   }
 

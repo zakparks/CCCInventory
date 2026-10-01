@@ -174,6 +174,8 @@ export class EditOrderComponent implements OnInit, OnDestroy {
       deliveryWindowEnd: [''],
       pickupPersonName: [''],
       pickupPersonPhone: [''],
+      mainCakeDesignDescription: [''],
+      cupcakeDesignDescription: [''],
       totalServings: [null as number | null]
     }),
     cakeTierInfo: this._formBuilder.array([]),
@@ -621,6 +623,8 @@ export class EditOrderComponent implements OnInit, OnDestroy {
       deliveryWindowEnd: d.deliveryWindowEnd ?? (this.addHours(this.editOrderFormGroup.get('orderTime')?.value ?? '', 2)),
       pickupPersonName: d.pickupPersonName ?? '',
       pickupPersonPhone: d.pickupPersonPhone ?? '',
+      mainCakeDesignDescription: d.mainCakeDesignDescription ?? '',
+      cupcakeDesignDescription: d.cupcakeDesignDescription ?? '',
       totalServings: d.totalServings ?? null
     }, { emitEvent: false });
   }

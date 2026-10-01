@@ -14,17 +14,17 @@
 
 <form class="row g-3" [formGroup]="editOrderFormGroup" (ngSubmit)="onSubmit()" autocomplete="off" novalidate>
 
-  <!-- Title + Order Number -->
+  <!-- Order Number + Title -->
   <div class="d-flex align-items-center gap-2 mb-0">
-    <h5 class="mb-0 text-nowrap">Title</h5>
+    <h5 class="mb-0 text-nowrap">Order #</h5>
+    <input formControlName="orderNumber" type="text" id="orderNumber" class="form-control text-center"
+      style="width: 6rem" readonly tabindex="-1" aria-label="Order Number" />
+    <h5 class="mb-0 ms-3 text-nowrap">Title</h5>
     <input formControlName="title" type="text" class="form-control"
       [ngClass]="{'is-invalid': isFieldIncomplete('title')}" />
     @if (isFieldIncomplete('title')) {
       <span class="text-danger text-nowrap small">Required</span>
     }
-    <h5 class="mb-0 ms-3 text-nowrap">Order #</h5>
-    <input formControlName="orderNumber" type="text" id="orderNumber" class="form-control text-center"
-      style="width: 6rem" readonly tabindex="-1" aria-label="Order Number" />
   </div>
 
   <!-- Order Information: fields are laid out row by row so Tab moves left-to-right, top-to-bottom.
@@ -548,6 +548,14 @@
     }
   </ng-container>
 
+  @if (isWedding && isCakeDetailsHeaderShown) {
+    <div class="form-floating">
+      <textarea [formControl]="ctrl('wedding.mainCakeDesignDescription')" id="w_mainDesign" class="form-control"
+        style="height: 70px" placeholder="Cake design"></textarea>
+      <label for="w_mainDesign">Cake Design (printed on the contract)</label>
+    </div>
+  }
+
   <!-- ── Cupcake Details ──────────────────────────────────────── -->
   @if (isCupcakeDetailsHeaderShown) {
     <hr />
@@ -630,6 +638,14 @@
       </div>
     }
   </ng-container>
+
+  @if (isWedding && isCupcakeDetailsHeaderShown) {
+    <div class="form-floating">
+      <textarea [formControl]="ctrl('wedding.cupcakeDesignDescription')" id="w_cupcakeDesign" class="form-control"
+        style="height: 70px" placeholder="Cupcake design"></textarea>
+      <label for="w_cupcakeDesign">Cupcake Design (printed on the contract)</label>
+    </div>
+  }
 
   <!-- ── Pupcake Details ──────────────────────────────────────── -->
   @if (isPupcakeDetailsHeaderShown) {

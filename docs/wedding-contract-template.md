@@ -107,13 +107,11 @@ app fields are optional, the token is blank when staff hasn't filled them in.
 | `{{venue_contact_name}}` / `{{venue_contact_phone}}` | | Contact Person for venue |
 | `{{pickup_date}}` / `{{pickup_time}}` | Order date/time (pickup orders only) | Pickup Date / Time |
 | `{{pickup_person_name}}` / `{{pickup_person_phone}}` | | Person picking up |
-| `{{main_flavor_description}}` | *Cake: Vanilla, Lemon; Filling: Raspberry; Icing: …* from the cake tiers | Main Cake: Description of Flavors |
-| `{{main_design_description}}` | Blank for now (no app field); staff types it in the doc | Main Cake: Description of Design |
+| `{{main_design_description}}` | Cake Design box (under Cake Details, wedding orders) | Main Cake: Description of Design |
 | `{{main_servings_total}}` | Sum of tier servings | Total servings in tiered cake |
 | `{{kitchen_cakes}}` | Yes / No (any sheet cakes) | Will additional kitchen cakes… |
-| `{{kitchen_flavor_description}}` / `{{kitchen_servings_total}}` | Summary from the sheet cakes / servings sum | Kitchen Cakes |
-| `{{cupcake_flavor_description}}` | Summary from the cupcake rows | Cupcakes: Description of Flavors |
-| `{{cupcake_design_description}}` | Blank for now (no app field) | Description of Cupcake Design |
+| `{{kitchen_servings_total}}` | Servings sum of the sheet cakes | Total servings in kitchen cakes |
+| `{{cupcake_design_description}}` | Cupcake Design box (under Cupcake Details, wedding orders) | Description of Cupcake Design |
 | `{{cupcake_servings_total}}` | Sum of cupcake quantities | Total servings in cupcakes |
 | `{{total_servings}}` | Total Servings field (falls back to the sum) | Total servings for entire order |
 | `{{total_cost}}` / `{{deposit_amount}}` | *$980.00* | Cost breakdown |

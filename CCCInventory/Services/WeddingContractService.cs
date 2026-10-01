@@ -213,25 +213,6 @@ namespace CCCInventory.Services
 
         private static List<Cake> KitchenCakes(Order o) => (o.Cakes ?? []).Where(IsSheet).ToList();
 
-        // "Cake: Vanilla, Chocolate; Filling: Raspberry; Icing: Vanilla Buttercream" from the order's items
-        private static string FlavorSummary(IEnumerable<(IEnumerable<string?> Cake, string? Filling, string? Icing)> items)
-        {
-            var list = items.ToList();
-            string Join(IEnumerable<string?> xs) => string.Join(", ", xs
-                .Where(x => !string.IsNullOrWhiteSpace(x) && !string.Equals(x, "None", StringComparison.OrdinalIgnoreCase))
-                .Select(x => x!.Trim()).Distinct());
-            var parts = new[]
-            {
-                ("Cake", Join(list.SelectMany(i => i.Cake))),
-                ("Filling", Join(list.Select(i => i.Filling))),
-                ("Icing", Join(list.Select(i => i.Icing))),
-            };
-            return string.Join("; ", parts.Where(p => p.Item2 != "").Select(p => $"{p.Item1}: {p.Item2}"));
-        }
-
-        private static string CakeFlavorSummary(IEnumerable<Cake> cakes) =>
-            FlavorSummary(cakes.Select(c => ((IEnumerable<string?>)CakeFlavorText(c).Split(" / "), c.FillingFlavor, c.IcingFlavor)));
-
         public static Dictionary<string, string> BuildValues(Order o)
         {
             var w = o.WeddingDetails ?? new WeddingDetails();
@@ -299,15 +280,11 @@ namespace CCCInventory.Services
                 ["pickup_person_phone"] = w.PickupPersonPhone ?? "",
 
                 // Cake description
-                ["main_flavor_description"] = CakeFlavorSummary(main),
-                ["main_design_description"] = "",   // no app field yet; staff writes it in the doc
+                ["main_design_description"] = w.MainCakeDesignDescription ?? "",
                 ["main_servings_total"] = Count(mainServings),
                 ["kitchen_cakes"] = kitchen.Count > 0 ? "Yes" : "No",
-                ["kitchen_flavor_description"] = CakeFlavorSummary(kitchen),
                 ["kitchen_servings_total"] = Count(kitchenServings),
-                ["cupcake_flavor_description"] = FlavorSummary((o.Cupcakes ?? []).Select(c =>
-                    ((IEnumerable<string?>)[c.CupcakeFlavor], c.FillingFlavor, c.IcingFlavor))),
-                ["cupcake_design_description"] = "",   // no app field yet; staff writes it in the doc
+                ["cupcake_design_description"] = w.CupcakeDesignDescription ?? "",
                 ["cupcake_servings_total"] = Count(cupcakeServings),
                 ["total_servings"] = w.TotalServings?.ToString(Us) ?? Count(mainServings + kitchenServings + cupcakeServings),
 

@@ -42,6 +42,9 @@ namespace CCCInventory
         public string? PickupPersonName { get; set; }
         public string? PickupPersonPhone { get; set; }
 
+        // Contract "Description of Design" lines
+        public string? MainCakeDesignDescription { get; set; }
+        public string? CupcakeDesignDescription { get; set; }
         public int? TotalServings { get; set; }
 
         // Generated Google Doc contract (latest)

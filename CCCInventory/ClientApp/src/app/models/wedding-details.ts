@@ -30,6 +30,8 @@ export interface WeddingDetails {
   pickupPersonName?: string | null;
   pickupPersonPhone?: string | null;
 
+  mainCakeDesignDescription?: string | null;   // contract "Description of Design"
+  cupcakeDesignDescription?: string | null;
   totalServings?: number | null;
 
   // Generated contract (server-managed)
