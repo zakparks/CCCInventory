@@ -25,7 +25,8 @@ The existing workflow (send from Google Docs with eSignature, signed PDF comes b
      *Advanced → continue*). No verification is needed for the bakery's own account.
 4. **APIs & Services → Credentials → Create credentials → OAuth client ID**, type **Web application**.
    Add **Authorized redirect URIs**:
-   - Development: `https://localhost:7005/api/google/callback`
+   - Development: `https://localhost:44401/api/google/callback` (the Angular dev server, which is what
+     the browser normally uses) **and** `https://localhost:7005/api/google/callback` (backend opened directly)
    - Production: `https://orders.canonsburgcakecompany.com/api/google/callback`
 5. Give the app the client ID/secret. Never commit them:
    - Development: `dotnet user-secrets set "Google:ClientId" "<id>"` and
